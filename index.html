@@ -4,11 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Viewer</title>
+    <style>
+        /* Basic styles for the viewer container */
+        #3d-viewer {
+            width: 100%;
+            height: 80vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
 </head>
 <body>
+    <input type="file" id="file-input"/>
     <div id="3d-viewer"></div>
-    
-    <!-- Link to the Webpack Bundle -->
-    <script src="dist/bundle.js"></script>
+
+    <!-- Load the bundled JavaScript file -->
+    <script src="./dist/bundle.js"></script>
+    <script type="module" src="./src/index.js"></script>
 </body>
 </html>

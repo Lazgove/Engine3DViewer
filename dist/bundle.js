@@ -96727,7 +96727,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _engine_main_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./engine/main.js */ "./src/engine/main.js");
 /* harmony import */ var _engine_viewer_embeddedviewer_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./engine/viewer/embeddedviewer.js */ "./src/engine/viewer/embeddedviewer.js");
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
 
 
 
@@ -96738,6 +96737,7 @@ __webpack_require__.r(__webpack_exports__);
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function () {
   var viewerContainer = document.getElementById('3d-viewer');
+  var fileInput = document.getElementById('file-input');
   if (!viewerContainer) {
     console.error("Viewer container not found!");
     return;
@@ -96764,15 +96764,13 @@ document.addEventListener('DOMContentLoaded', function () {
   // Store the viewer instance in the container for later access
   viewerContainer.viewerInstance = viewer;
 
-  // Create a simple cube and add it to the viewer
-  var geometry = new three__WEBPACK_IMPORTED_MODULE_2__.BoxGeometry(1, 1, 1);
-  var material = new three__WEBPACK_IMPORTED_MODULE_2__.MeshBasicMaterial({
-    color: 0x00ff00
+  // Handle file input change event
+  fileInput.addEventListener('change', function (event) {
+    var files = event.target.files;
+    if (files.length > 0) {
+      viewer.LoadModelFromFileList(Array.from(files));
+    }
   });
-  var cube = new three__WEBPACK_IMPORTED_MODULE_2__.Mesh(geometry, material);
-  viewer.GetViewer().scene.add(cube);
-  console.log(viewer.GetViewer.scene);
-  console.log('Cube added to the viewer');
 });
 
 // Handle window resizing

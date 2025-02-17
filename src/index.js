@@ -8,6 +8,7 @@ export { Engine, EmbeddedViewer };
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     const viewerContainer = document.getElementById('3d-viewer');
+    const fileInput = document.getElementById('file-input');
     
     if (!viewerContainer) {
         console.error("Viewer container not found!");
@@ -27,14 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Store the viewer instance in the container for later access
     viewerContainer.viewerInstance = viewer;
 
-    // Create a simple cube and add it to the viewer
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-
-    viewer.GetViewer().scene.add(cube);
-    console.log(viewer.GetViewer.scene);
-    console.log('Cube added to the viewer');
+    // Handle file input change event
+    fileInput.addEventListener('change', (event) => {
+        const files = event.target.files;
+        if (files.length > 0) {
+            viewer.LoadModelFromFileList(Array.from(files));
+        }
+    });
 });
 
 // Handle window resizing
