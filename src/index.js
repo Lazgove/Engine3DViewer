@@ -1,5 +1,6 @@
 import * as Engine from './engine/main.js';
 import { EmbeddedViewer } from './engine/viewer/embeddedviewer.js';
+import * as THREE from 'three';
 
 // Export the Engine and EmbeddedViewer modules
 export { Engine, EmbeddedViewer };
@@ -25,14 +26,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Store the viewer instance in the container for later access
     viewerContainer.viewerInstance = viewer;
-    console.log('hello');
 
     // Create a simple cube and add it to the viewer
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const cube = new THREE.Mesh(geometry, material);
 
-    viewer.GetViewer().AddMesh(cube);
+    viewer.GetViewer().scene.add(cube);
+    console.log(viewer.GetViewer.scene);
+    console.log('Cube added to the viewer');
 });
 
 // Handle window resizing

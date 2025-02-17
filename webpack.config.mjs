@@ -1,36 +1,29 @@
 import path from 'path';
 
 export default {
-  entry: './src/index.js',  // ✅ Webpack starts here (your entry point)
+  entry: './src/index.js',  // Entry point for your app
   output: {
-    filename: 'bundle.js',  // Output the bundled file as 'bundle.js'
-    path: path.resolve(process.cwd(), 'dist'),  // Save the output in the 'dist' directory
+    filename: 'bundle.js',  // Output bundle file name
+    path: path.resolve(process.cwd(), 'dist'),  // Fixing the output path to the correct location
   },
-  mode: 'production',  // Set to 'production' to enable optimizations (you can use 'development' for testing locally)
-  
-  // Add the module rules for JS file handling
+  mode: 'development',  // Set mode to 'development' for easier debugging, or 'production' for optimized builds
+  devtool: 'source-map',  // Optional: helps with debugging by generating a source map
   module: {
     rules: [
       {
-        test: /\.m?js$/,  // ✅ Matches both .js and .mjs files
-        exclude: /node_modules/,  // Exclude node_modules from transpiling
+        test: /\.m?js$/,  // Process .js and .mjs files
+        exclude: /node_modules/,
         use: {
-          loader: 'babel-loader',  // Use babel-loader to transpile modern JS
+          loader: 'babel-loader',  // Use Babel for JS transpiling
           options: {
-            presets: ['@babel/preset-env'],  // Use the preset-env to transpile JS based on target environments
+            presets: ['@babel/preset-env'],  // Use Babel presets to compile JavaScript for various browsers
           },
         },
       },
     ],
   },
-
   resolve: {
-    extensions: ['.js'],  // ✅ Allows you to import files without the extension (i.e., import './myFile' instead of './myFile.js')
+    extensions: ['.js'],  // Allows imports without file extensions
   },
-
-  // Watch mode will automatically rebuild your bundle when source files change
-  watch: true,  // ✅ Enables watch mode
-  
-  // Optionally, enable source maps for better debugging in development
-  devtool: 'source-map', // Use source maps for better debugging
+  watch: true,  // Enable webpack watch mode for automatic rebuilding on changes
 };
