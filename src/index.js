@@ -25,6 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Store the viewer instance in the container for later access
     viewerContainer.viewerInstance = viewer;
+    console.log('hello');
+
+    // Create a simple cube and add it to the viewer
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const cube = new THREE.Mesh(geometry, material);
+
+    viewer.GetViewer().AddMesh(cube);
 });
 
 // Handle window resizing
