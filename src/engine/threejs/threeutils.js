@@ -303,3 +303,8 @@ export function GetLineSegmentsProjectedDistance (camera, canvasWidth, canvasHei
     }
     return distance;
 }
+
+export function GetObjectHeight(object) {
+    const box = new THREE.Box3().setFromObject(object);
+    return box.max.y - box.min.y;
+}

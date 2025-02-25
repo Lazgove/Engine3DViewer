@@ -140,6 +140,8 @@ export class EmbeddedViewer
             },
             onModelFinished : (importResult, threeObject) => {
                 this.parentElement.removeChild (progressDiv);
+                threeObject.name = "rootScene";
+                console.log(threeObject);
                 this.canvas.style.display = 'inherit';
                 this.viewer.SetMainObject (threeObject);
                 let boundingSphere = this.viewer.GetBoundingSphere ((meshUserData) => {
@@ -157,6 +159,8 @@ export class EmbeddedViewer
                 if (this.parameters.onModelLoaded) {
                     this.parameters.onModelLoaded ();
                 }
+                this.viewer.CreateBoundingBoxMesh();
+                this.viewer.CreateBoundingBoxesAndAnnotations();
             },
             onTextureLoaded : () => {
                 this.viewer.Render ();

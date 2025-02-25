@@ -1,14 +1,19 @@
 import { Coord3D, CoordDistance3D, SubCoord3D } from '../geometry/coord3d.js';
 import { DegRad, Direction, IsEqual } from '../geometry/geometry.js';
 import { ColorComponentToFloat } from '../model/color.js';
-import { CreateHighlightMaterials, ShadingType } from '../threejs/threeutils.js';
+import { CreateHighlightMaterials, ShadingType, GetObjectHeight } from '../threejs/threeutils.js';
 import { Camera, NavigationMode, ProjectionMode } from './camera.js';
 import { GetDomElementInnerDimensions } from './domutils.js';
 import { Navigation } from './navigation.js';
 import { ShadingModel } from './shadingmodel.js';
 import { ViewerModel, ViewerMainModel } from './viewermodel.js';
+import { InitializeMasks } from './repere.js';
+import gsap from 'gsap';
 
 import * as THREE from 'three';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+
 
 export function GetDefaultCamera (direction)
 {
@@ -167,14 +172,40 @@ export class Viewer
         this.mainModel = null;
         this.extraModel = null;
         this.camera = null;
+        this.defaultCameraParameters = null;
         this.projectionMode = null;
         this.cameraValidator = null;
         this.shadingModel = null;
         this.navigation = null;
         this.upVector = null;
+        this.repere = null;
+        this.vignette = null;
         this.settings = {
             animationSteps : 40
         };
+
+        this.rotationSpeed = 0; // Rotation speed in radians per frame
+        this.isEasing = false;
+        this.isAnimating = false;
+        this.isRotating = true;
+        this.targetSpeed = 20;
+        this.easingFactor = 0.05;
+        this.raycaster = new THREE.Raycaster();
+        this.dragPlane = new THREE.Plane();
+        this.intersectionPoint = new THREE.Vector3();
+        this.dragOffset = new THREE.Vector3();
+        this.targetPosition = new THREE.Vector3();
+
+        this.initialCameraView = null; // Property to store the initial camera view
+
+        this.animate = this.animate.bind(this);
+        this.onMouseDown = this.onMouseDown.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        this.onMouseUp = this.onMouseUp.bind(this);
+
+        this.controls = null;
+        this.selectedObject = null;
+        this.originalMaterial = null;
     }
 
     Init (canvas)
@@ -202,9 +233,13 @@ export class Viewer
 
         this.InitNavigation ();
         this.InitShading ();
-
+        this.InitMasks ();
         this.Render ();
+
+        // Start the animation loop after initialization
+        this.animate();
     }
+
 
     SetMouseClickHandler (onMouseClick)
     {
@@ -255,6 +290,29 @@ export class Viewer
         return this.canvas;
     }
 
+    GetScene () {
+        return this.scene;
+    }
+
+    GetObject () {
+        return this.mainModel.GetMainObject().GetRootObject();
+    }
+
+    GetRenderer ()
+    {
+        return this.renderer;
+    }
+
+    GetRepere ()
+    {
+        return this.repere;
+    }
+
+    GetVignette ()
+    {
+        return this.vignette;
+    }
+
     GetCamera ()
     {
         return this.navigation.GetCamera ();
@@ -270,6 +328,10 @@ export class Viewer
         this.navigation.SetCamera (camera);
         this.cameraValidator.ForceUpdate ();
         this.Render ();
+    }
+
+    SetDefaultCameraParmeters (cameraParameters) {
+        this.defaultCameraParameters = cameraParameters;
     }
 
     SetProjectionMode (projectionMode)
@@ -292,6 +354,12 @@ export class Viewer
 
         this.AdjustClippingPlanes ();
         this.Render ();
+    }
+
+    RecenterCamera ()
+    {
+        this.navigation.MoveCamera (this.defaultCameraParameters, 20 ? this.settings.animationSteps : 20);
+        this.Render();
     }
 
     Resize (width, height)
@@ -319,6 +387,7 @@ export class Viewer
         let radius = boundingSphere.radius;
 
         let newCamera = this.navigation.GetFitToSphereCamera (center, radius);
+        this.defaultCameraParameters = newCamera.Clone ();
         this.navigation.MoveCamera (newCamera, animation ? this.settings.animationSteps : 0);
     }
 
@@ -424,6 +493,28 @@ export class Viewer
         this.mainModel.SetMainObject (object);
         this.shadingModel.SetShadingType (shadingType);
 
+        // Store the initial camera view when the object is first loaded
+        this.initialCameraView = this.navigation.GetCamera().Clone();
+
+        // Store initial positions and random directions
+        this.initialPositions = [];
+        this.directionVectors = [];
+
+        object.traverse((child) => {
+            if (child.isMesh && child.name !== '') {
+                this.initialPositions.push(child.position.clone());
+                const direction = new THREE.Vector3(
+                    Math.random() - 0.5,
+                    Math.random() - 0.5,
+                    Math.random() - 0.5
+                ).normalize();
+                this.directionVectors.push(direction);
+            }
+        });
+
+        this.isAnimating = true; // Start animating when the model is set
+        console.log(this.initialPositions);
+        //this.UpdateCameraAndControls();
         this.Render ();
     }
 
@@ -535,7 +626,18 @@ export class Viewer
             }
         });
 
-        this.upVector = new UpVector ();
+        // Set the camera movement callback
+        this.navigation.setCameraMoveCallback(() => {
+            this.onCameraMove();
+        });
+
+        this.upVector = new UpVector();
+    }
+
+    onCameraMove() {
+        this.UpdateCameraAndControls();
+        console.log('Camera moved');
+        // Add any additional logic you want to execute when the camera moves
     }
 
     InitShading  ()
@@ -546,6 +648,22 @@ export class Viewer
     GetShadingType ()
     {
         return this.shadingModel.type;
+    }
+
+    InitMasks () {
+        const { vignette, repere } = InitializeMasks(this.GetScene(), this.GetCanvas());
+        this.vignette = vignette;
+        this.repere = repere;
+        this.GetScene().add(this.vignette);
+        this.GetScene().add(this.repere);
+    }
+
+    UpdateRepere() {
+        this.GetScene().getObjectByName("repere").visible = this.repere.visible;
+    }
+
+    UpdateVignette() {
+        this.GetScene().getObjectByName("vignette").visible = this.vignette.visible;
     }
 
     GetImageSize ()
@@ -597,5 +715,327 @@ export class Viewer
     {
         this.Clear ();
         this.renderer.dispose ();
+    }
+
+    animate()
+    {
+        requestAnimationFrame(this.animate);
+
+        if (this.isAnimating && this.mainModel) {
+            const mainObject = this.mainModel.GetMainObject().GetRootObject();
+            if (mainObject) {
+                //this.UpdateCameraAndControls();
+                mainObject.rotation.y += (this.rotationSpeed * Math.PI / 180) * (1 / 60);
+            }
+        }
+
+        this.GetScene().traverse((child) => {
+            if (child.userData.viewCam && child.userData.isAnnotation) {
+                child.lookAt(this.camera.position);
+            }
+            });
+            
+        this.Render();
+    }
+
+    EaseInRotation() {
+        this.isEasing = true;
+        const easeIn = () => {
+        if (this.rotationSpeed < this.targetSpeed && this.isRotating) {
+            this.rotationSpeed += this.easingFactor * (this.targetSpeed - this.rotationSpeed);
+            requestAnimationFrame(easeIn); 
+        } else {
+            this.rotationSpeed = this.targetSpeed; 
+            this.isEasing = false;
+        }
+        };
+        easeIn();
+    }
+
+    EaseOutRotation() {
+        this.isEasing = true;
+        const easeOut = () => {
+        if (this.rotationSpeed > 0 && !this.isRotating) {
+            this.rotationSpeed -= this.easingFactor * this.rotationSpeed;
+            requestAnimationFrame(easeOut);
+        } else {
+            this.rotationSpeed = 0;
+            this.isEasing = false;
+            }
+        };
+        easeOut();
+    }
+    
+    ExplodeModel(factor, duration = 0.5) {
+        const startTime = performance.now();
+        const endTime = startTime + duration * 1000;
+        const mainObject = this.mainModel.GetMainObject().GetRootObject();
+
+        const initialPositions = this.initialPositions;
+        const directionVectors = this.directionVectors;
+
+        if (!initialPositions || !directionVectors) {
+            console.error('Initial positions or direction vectors are not defined.');
+            return;
+        }
+
+        let index = 0;
+
+        mainObject.traverse((child) => {
+            if (child.isMesh && child.name !== '') {
+                if (index < directionVectors.length) {
+                    const direction = directionVectors[index].clone();
+                    const newPosition = initialPositions[index].clone().add(direction.multiplyScalar(factor));
+                    gsap.to(child.position, {
+                        x: newPosition.x,
+                        y: newPosition.y,
+                        z: newPosition.z,
+                        duration: duration,
+                        ease: "power2.out",
+                    });
+                    index++;
+                } else {
+                    console.error(`Index ${index} exceeds directionVectors array length`);
+                }
+            }
+        });
+    };
+
+    CreateBoundingBoxMesh() {
+
+        const mainObject = this.mainModel.GetMainObject().GetRootObject();
+        const boundingBox = new THREE.Box3().setFromObject(mainObject);
+        const centerBbox = boundingBox.getCenter(new THREE.Vector3());
+        const size = boundingBox.getSize(new THREE.Vector3());
+        const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const boxMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+        const boundingBoxHelper = new THREE.LineSegments(
+            new THREE.EdgesGeometry(boxGeometry),
+            boxMaterial
+        );
+        const cotationCheckbox = document.getElementById('cotationCheckbox');
+        boundingBoxHelper.name = 'boundingBoxHelper';
+        boundingBoxHelper.scale.set(size.x, size.y, size.z);
+        if (cotationCheckbox.checked) {
+            boundingBoxHelper.visible = true;
+        } else {
+            boundingBoxHelper.visible = false;
+        }
+        boundingBoxHelper.userData.isAnnotation = true;
+        mainObject.add(boundingBoxHelper);
+        boundingBoxHelper.position.set(centerBbox.x, centerBbox.y, centerBbox.z);
+    }
+
+    CreateBoundingBoxesAndAnnotations() {
+        const mainObject = this.mainModel.GetMainObject().GetRootObject();
+        const boundingBox = new THREE.Box3().setFromObject(mainObject);
+        const objectHeight = GetObjectHeight(mainObject);
+        const size = boundingBox.getSize(new THREE.Vector3());
+
+        this.CreateDoubleSidedArrow(
+            new THREE.Vector3(boundingBox.min.x, boundingBox.min.y, boundingBox.min.z),
+            new THREE.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z),
+            `${size.x.toFixed(2)} cm`,
+            objectHeight
+        );
+
+        this.CreateDoubleSidedArrow(
+            new THREE.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z),
+            new THREE.Vector3(boundingBox.max.x, boundingBox.max.y, boundingBox.min.z),
+            `${size.y.toFixed(2)} cm`,
+            objectHeight
+        );
+
+        this.CreateDoubleSidedArrow(
+            new THREE.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z),
+            new THREE.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.max.z),
+            `${size.z.toFixed(2)} cm`,
+            objectHeight
+        );
+    }
+
+    CreateDoubleSidedArrow(startPoint, endPoint, label, objectHeight, color = 0x37b6ff, textSizePercent = 0.07) {
+        const mainObject = this.mainModel.GetMainObject().GetRootObject();
+        const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+        const reverseDirection = new THREE.Vector3().subVectors(startPoint, endPoint).normalize();
+        const arrowLength = startPoint.distanceTo(endPoint);
+        const arrowHelper1 = new THREE.ArrowHelper(direction, startPoint, arrowLength, color);
+        const textMeshes = [];
+
+        arrowHelper1.userData.isAnnotation = true;
+        if (cotationCheckbox.checked) {
+            arrowHelper1.visible = true;
+        } else {
+            arrowHelper1.visible = false;
+        }
+        mainObject.add(arrowHelper1);
+
+        const arrowHelper2 = new THREE.ArrowHelper(reverseDirection, endPoint, arrowLength, color);
+        arrowHelper2.userData.isAnnotation = true;
+        if (cotationCheckbox.checked) {
+            arrowHelper2.visible = true;
+        } else {
+            arrowHelper2.visible = false;
+        }
+        mainObject.add(arrowHelper2);
+
+        const loader = new FontLoader();
+        loader.load(
+            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
+            function (font) {
+                const textSize = objectHeight * textSizePercent;
+                const textGeometry = new TextGeometry(label, {
+                    font: font,
+                    size: textSize,
+                    depth: 0.02,
+                    curveSegments: 12,
+                });
+
+                const textMaterial = new THREE.MeshBasicMaterial({ color });
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
+                textMesh.position.copy(midPoint);
+                textMesh.userData.isAnnotation = true;
+                textMesh.userData.viewCam = true;
+                const cotationCheckbox = document.getElementById('cotationCheckbox');
+                if (cotationCheckbox.checked) {
+                    textMesh.visible = true;
+                } else {
+                    textMesh.visible = false;
+                }
+                textMeshes.push(textMesh);
+                mainObject.add(textMesh);
+            },
+            undefined,
+            function (error) {
+                console.error('Error loading font:', error);
+            }
+        );
+    }
+
+    onMouseDown(event) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.navigation.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.navigation.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+        this.raycaster.setFromCamera(this.navigation.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(this.mainModel.GetMainObject().GetRootObject().children, true);
+    
+        if (intersects.length > 0) {
+            this.selectedObject = intersects[0].object;
+            this.originalMaterial = this.selectedObject.material;
+    
+            this.selectedObject.material = new THREE.MeshStandardMaterial({
+                color: 0xffff00,
+                emissive: 0xffd700,
+            });
+    
+            // Set the drag plane perpendicular to the camera view and at the intersection point
+            const intersectionPoint = intersects[0].point;
+            const cameraDirection = new THREE.Vector3();
+            this.camera.getWorldDirection(cameraDirection);
+            this.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, intersectionPoint);
+    
+            if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                const parentInverseMatrix = new THREE.Matrix4().copy(this.scene.getObjectByName('rootScene').matrixWorld).invert();
+                const localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
+                const localObjectPosition = this.selectedObject.position.clone();
+    
+                this.dragOffset.copy(localObjectPosition).sub(localIntersectionPoint);
+            }
+            this.navigation.SetNavigationMode(0);
+            console.log(this.navigation);
+            //this.controls.enabled = false;
+        }
+    }
+    
+    onMouseMove(event) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.navigation.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.navigation.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+        if (this.selectedObject) {
+            this.raycaster.setFromCamera(this.navigation.mouse, this.camera);
+    
+            if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                const parentInverseMatrix = new THREE.Matrix4().copy(this.scene.getObjectByName('rootScene').matrixWorld).invert();
+                const localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
+    
+                const newPosition = localIntersectionPoint.add(this.dragOffset);
+    
+                const mainObject = this.mainModel.GetMainObject().GetRootObject();
+                const boundingBox = new THREE.Box3().setFromObject(mainObject);
+                const boxCenter = new THREE.Vector3();
+                boundingBox.getCenter(boxCenter);
+    
+                const boxSize = new THREE.Vector3();
+                boundingBox.getSize(boxSize);
+    
+                const maxDimension = Math.max(boxSize.x, boxSize.y, boxSize.z);
+                const scaledHalfSize = (maxDimension * 3) / 2;
+    
+                const movementLimits = {
+                    min: boxCenter.clone().subScalar(scaledHalfSize),
+                    max: boxCenter.clone().addScalar(scaledHalfSize),
+                };
+    
+                newPosition.x = THREE.MathUtils.clamp(newPosition.x, movementLimits.min.x, movementLimits.max.x);
+                newPosition.y = THREE.MathUtils.clamp(newPosition.y, movementLimits.min.y, movementLimits.max.y);
+                newPosition.z = THREE.MathUtils.clamp(newPosition.z, movementLimits.min.z, movementLimits.max.z);
+    
+                this.selectedObject.position.copy(newPosition);
+            }
+        }
+    }
+    
+    onMouseUp(event) {
+        if (this.selectedObject) {
+            if (this.originalMaterial) {
+                this.selectedObject.material = this.originalMaterial;
+            }
+            this.navigation.SetNavigationMode(1);
+            //this.controls.enabled = true;
+            //this.controls.saveState();
+            //this.controls.reset();
+        }
+    66
+        this.selectedObject = null;
+    }
+    
+    addInteractionListeners() {
+        this.onMouseDown = this.onMouseDown.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        this.onMouseUp = this.onMouseUp.bind(this);
+    
+        this.renderer.domElement.addEventListener('mousedown', this.onMouseDown);
+        this.renderer.domElement.addEventListener('mousemove', this.onMouseMove);
+        this.renderer.domElement.addEventListener('mouseup', this.onMouseUp);
+    }
+    
+    removeInteractionListeners() {
+        this.renderer.domElement.removeEventListener('mousedown', this.onMouseDown);
+        this.renderer.domElement.removeEventListener('mousemove', this.onMouseMove);
+        this.renderer.domElement.removeEventListener('mouseup', this.onMouseUp);
+    };
+
+    UpdateCameraAndControls() {
+        const mainObject = this.mainModel.GetMainObject().GetRootObject();
+        const smoothFactor = 0.05;
+        const distanceScaleFactor = 3;
+        const boundingBox = new THREE.Box3().setFromObject(mainObject);
+        const centerBbox = boundingBox.getCenter(new THREE.Vector3());
+        const size = boundingBox.getSize(new THREE.Vector3());
+        const maxDimension = Math.max(size.x, size.y, size.z) / 2;
+        const minDistance = maxDimension * distanceScaleFactor*6;
+        this.navigation.setMinimumDistance(minDistance);
+
+        //const currentDistance = this.camera.position.distanceTo(centerBbox);
+        // if (currentDistance < minDistance) {
+        //     const direction = new THREE.Vector3().subVectors(this.camera.position, centerBbox).normalize();
+        //     this.targetPosition.copy(direction.multiplyScalar(minDistance).add(centerBbox));
+        //     this.camera.position.lerp(this.targetPosition, smoothFactor);
+        // }
+        
+        // this.camera.lookAt(centerBbox);
     }
 }

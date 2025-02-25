@@ -1,6 +1,7 @@
 import * as Engine from './engine/main.js';
 import { EmbeddedViewer } from './engine/viewer/embeddedviewer.js';
 import * as THREE from 'three';
+import { setupEventListeners } from './engine/viewer/eventListeners.js';
 
 // Export the Engine and EmbeddedViewer modules
 export { Engine, EmbeddedViewer };
@@ -8,8 +9,7 @@ export { Engine, EmbeddedViewer };
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     const viewerContainer = document.getElementById('3d-viewer');
-    const fileInput = document.getElementById('file-input');
-    
+
     if (!viewerContainer) {
         console.error("Viewer container not found!");
         return;
@@ -28,13 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Store the viewer instance in the container for later access
     viewerContainer.viewerInstance = viewer;
 
-    // Handle file input change event
-    fileInput.addEventListener('change', (event) => {
-        const files = event.target.files;
-        if (files.length > 0) {
-            viewer.LoadModelFromFileList(Array.from(files));
-        }
-    });
+    // Setup event listeners
+    setupEventListeners(viewer);
+
 });
 
 // Handle window resizing

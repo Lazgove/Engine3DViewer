@@ -4,45 +4,38 @@ import { Coord4D } from './coord4d.js';
 import { IsEqual, IsNegative } from './geometry.js';
 import { QuaternionFromAxisAngle } from './quaternion.js';
 
-export class Matrix
-{
-    constructor (matrix)
-    {
+export class Matrix {
+    constructor(matrix) {
         this.matrix = null;
         if (matrix !== undefined && matrix !== null) {
-            this.matrix = matrix;
+            this.Set(matrix);
         }
     }
 
-    IsValid ()
-    {
+    IsValid() {
         return this.matrix !== null;
     }
 
-    Set (matrix)
-    {
+    Set(matrix) {
         this.matrix = matrix;
         return this;
     }
 
-    Get ()
-    {
+    Get() {
         return this.matrix;
     }
 
-    Clone ()
-    {
+    Clone() {
         let result = [
             this.matrix[0], this.matrix[1], this.matrix[2], this.matrix[3],
             this.matrix[4], this.matrix[5], this.matrix[6], this.matrix[7],
             this.matrix[8], this.matrix[9], this.matrix[10], this.matrix[11],
             this.matrix[12], this.matrix[13], this.matrix[14], this.matrix[15]
         ];
-        return new Matrix (result);
+        return new Matrix(result);
     }
 
-    CreateIdentity ()
-    {
+    CreateIdentity() {
         this.matrix = [
             1.0, 0.0, 0.0, 0.0,
             0.0, 1.0, 0.0, 0.0,
@@ -52,19 +45,17 @@ export class Matrix
         return this;
     }
 
-    IsIdentity ()
-    {
-        let identity = new Matrix ().CreateIdentity ().Get ();
+    IsIdentity() {
+        let identity = new Matrix().CreateIdentity().Get();
         for (let i = 0; i < 16; i++) {
-            if (!IsEqual (this.matrix[i], identity[i])) {
+            if (this.matrix[i] !== identity[i]) {
                 return false;
             }
         }
         return true;
     }
 
-    CreateTranslation (x, y, z)
-    {
+    CreateTranslation(x, y, z) {
         this.matrix = [
             1.0, 0.0, 0.0, 0.0,
             0.0, 1.0, 0.0, 0.0,
@@ -72,6 +63,17 @@ export class Matrix
             x, y, z, 1.0
         ];
         return this;
+    }
+
+    SetTranslation(x, y, z) {
+        this.matrix[12] = x;
+        this.matrix[13] = y;
+        this.matrix[14] = z;
+        return this;
+    }
+
+    GetTranslation() {
+        return { x: this.matrix[12], y: this.matrix[13], z: this.matrix[14] };
     }
 
     CreateRotation (x, y, z, w)

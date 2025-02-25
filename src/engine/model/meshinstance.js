@@ -1,5 +1,6 @@
 import { TransformMesh } from './meshutils.js';
 import { ModelObject3D } from './object.js';
+import * as THREE from 'three';
 
 export class MeshInstanceId
 {
@@ -28,6 +29,8 @@ export class MeshInstance extends ModelObject3D
         this.id = id;
         this.node = node;
         this.mesh = mesh;
+        this.initialPosition = this.node.GetWorldTransformation().GetTranslation().clone();
+        //console.log(this.initialPosition);
     }
 
     GetId ()

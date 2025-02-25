@@ -131,6 +131,10 @@ export class ViewerMainModel
         this.hasPolygonOffset = false;
     }
 
+    GetMainObject() {
+        return this.mainModel;
+    }
+
     SetMainObject (mainObject)
     {
         this.mainModel.SetRootObject (mainObject);

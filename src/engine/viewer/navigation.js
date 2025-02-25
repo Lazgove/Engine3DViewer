@@ -251,6 +251,9 @@ export class Navigation
 		this.onMouseMove = null;
 		this.onContext = null;
 
+		this.minimumDistance = 0.1; // Default minimum distance
+		this.cameraMoveCallback = null; // Camera movement callback
+
 		if (this.canvas.addEventListener) {
 			this.canvas.addEventListener ('mousedown', this.OnMouseDown.bind (this));
 			this.canvas.addEventListener ('wheel', this.OnMouseWheel.bind (this));
@@ -266,6 +269,7 @@ export class Navigation
 			document.addEventListener ('mouseleave', this.OnMouseLeave.bind (this));
 		}
 	}
+
 
 	SetMouseClickHandler (onMouseClick)
 	{
@@ -535,6 +539,19 @@ export class Navigation
 			this.camera.eye.Rotate (verticalDirection, -radAngleX, this.camera.center);
 			this.camera.up = verticalDirection;
 		}
+
+		 // Ensure the new distance is not less than the minimum distance
+		 let direction = SubCoord3D(this.camera.center, this.camera.eye);
+		 let distance = direction.Length();
+		 if (distance < this.minimumDistance) {
+			 let move = this.minimumDistance - distance;
+			 this.camera.eye.Offset(direction.Normalize(), move);
+		 }
+
+		// Call the camera movement callback if it is set
+		if (this.cameraMoveCallback) {
+			this.cameraMoveCallback();
+		}
 	}
 
 	Pan (moveX, moveY)
@@ -548,14 +565,49 @@ export class Navigation
 
 		this.camera.eye.Offset (verticalDirection, moveY);
 		this.camera.center.Offset (verticalDirection, moveY);
+
+		// Ensure the new distance is not less than the minimum distance
+		let direction = SubCoord3D(this.camera.center, this.camera.eye);
+		let distance = direction.Length();
+		if (distance < this.minimumDistance) {
+			let move = this.minimumDistance - distance;
+			this.camera.eye.Offset(direction.Normalize(), move);
+		}
+
+		// Call the camera movement callback if it is set
+		if (this.cameraMoveCallback) {
+			this.cameraMoveCallback();
+		}
 	}
 
 	Zoom (ratio)
 	{
-		let direction = SubCoord3D (this.camera.center, this.camera.eye);
-		let distance = direction.Length ();
+		let direction = SubCoord3D(this.camera.center, this.camera.eye);
+		let distance = direction.Length();
 		let move = distance * ratio;
-		this.camera.eye.Offset (direction, move);
+
+		// Ensure the new distance is not less than the minimum distance
+		if (distance + move < this.minimumDistance) {
+			move = this.minimumDistance - distance;
+		}
+
+		// Only apply the move if it does not bring the camera closer than the minimum distance
+		if (distance + move >= this.minimumDistance) {
+			this.camera.eye.Offset(direction.Normalize(), move);
+		}
+
+		// Call the camera movement callback if it is set
+		if (this.cameraMoveCallback) {
+			this.cameraMoveCallback();
+		}
+	}
+
+	setMinimumDistance(minDistance) {
+		this.minimumDistance = minDistance;
+	}
+
+	setCameraMoveCallback(callback) {
+		this.cameraMoveCallback = callback;
 	}
 
 	Update ()

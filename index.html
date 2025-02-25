@@ -17,6 +17,25 @@
 </head>
 <body>
     <input type="file" id="file-input"/>
+    <button id="reset-button">Reset</button>
+    <button id="recenter-button">Recenter</button>
+    <label>
+        <input type="checkbox" id="auto-rotate" checked> Auto Rotate
+    </label>
+    <label>
+        <input type="checkbox" id="cotationCheckbox"> Show Annotations
+    </label>
+    <label>
+        <input type="checkbox" id="blackMode" checked> Black Mode
+    </label>
+    <label>
+        <input type="checkbox" id="repereCheckbox"> Show Repere
+    </label>
+    <label>
+        <input type="checkbox" id="manuelCheckbox"> Manual Mode
+    </label>
+    <input type="range" id="mySlider" min="0" max="100" value="0" style="display: block;">
+
     <div id="3d-viewer"></div>
 
     <!-- Load the bundled JavaScript file -->

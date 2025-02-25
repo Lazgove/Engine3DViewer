@@ -2,6 +2,9 @@ import { MeshInstance, MeshInstanceId } from './meshinstance.js';
 import { Node } from './node.js';
 import { ModelObject3D } from './object.js';
 import { Unit } from './unit.js';
+import * as THREE from 'three';
+import { Transformation } from '../geometry/transformation.js';
+import gsap from 'gsap';
 
 export class Model extends ModelObject3D
 {
@@ -231,4 +234,21 @@ export class Model extends ModelObject3D
             meshInstance.EnumerateTriangleVertices (onTriangleVertices);
         });
     }
+
+    CalculateCenter() {
+        let center = new THREE.Vector3();
+        let vertexCount = 0;
+
+        this.EnumerateVertices((vertex) => {
+            center.add(new THREE.Vector3(vertex.x, vertex.y, vertex.z));
+            vertexCount++;
+        });
+
+        if (vertexCount > 0) {
+            center.divideScalar(vertexCount);
+        }
+
+        return center;
+    }
+
 }

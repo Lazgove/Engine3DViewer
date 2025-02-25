@@ -11,6 +11,7 @@
   "type": "module",
   "dependencies": {
     "fflate": "^0.8.2",
+    "gsap": "^3.12.7",
     "three": "^0.173.0"
   },
   "devDependencies": {
