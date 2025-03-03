@@ -1,5 +1,4 @@
 export function setupEventListeners(viewer) {
-    const fileInput = document.getElementById('file-input');
     const resetButton = document.getElementById('reset-button');
     const autoRotateCheckbox = document.getElementById('auto-rotate');
     const cotationCheckbox = document.getElementById('cotationCheckbox');
@@ -15,13 +14,36 @@ export function setupEventListeners(viewer) {
     repereCheckbox.checked = false;
     manuelCheckbox.checked = false;
 
-    // Handle file input change event
-    fileInput.addEventListener('change', (event) => {
-        const files = event.target.files;
-        if (files.length > 0) {
-            viewer.LoadModelFromFileList(Array.from(files));
-        }
-    });
+    // Add click event to each dropdown item for selection
+    function addDropdownItemEventListeners() {
+        const dropdownItems = document.querySelectorAll('.dropdown-item');
+        const dropdownButton = document.querySelector('.dropdown-toggle');
+        dropdownItems.forEach(item => {
+            item.addEventListener('click', async (event) => {
+                const selectedItem = item.querySelector('span').textContent;
+                dropdownButton.textContent = selectedItem; // Update button text
+                document.querySelector('.dropdown-list').style.display = 'none'; // Close dropdown
+                await window.cleanAndLoadItem(selectedItem);
+                updateTimestamp(userID, selectedItem); // Update timestamp
+            });
+        });
+    }
+
+    // Add click event to remove buttons
+    function addRemoveButtonEventListeners() {
+        const removeButtons = document.querySelectorAll('.remove-button');
+        removeButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const item = e.target.closest('.dropdown-item');
+                if (item) {
+                    removeItemFromLambda(item);
+                    item.remove(); // Remove item from dropdown
+                    updateUrlAfterRemoval(item.dataset.value);  // Update URL after item removal
+                }
+                e.stopPropagation(); // Prevent event from propagating to item selection
+            });
+        });
+    }
 
     repereCheckbox.addEventListener('change', function () {
         const repere = viewer.GetViewer().GetRepere();

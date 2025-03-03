@@ -27,17 +27,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Store the viewer instance in the container for later access
     viewerContainer.viewerInstance = viewer;
-
     // Setup event listeners
     setupEventListeners(viewer);
-
+    // const files = await fetchDynamoData(false, 'hj');
+    // const fileData = files[0];
+    // cleanAndLoadItem(fileData);
 });
 
 // Handle window resizing
 window.addEventListener('resize', () => {
     const viewerContainer = document.getElementById('3d-viewer');
-    
     if (viewerContainer && viewerContainer.viewerInstance) {
         viewerContainer.viewerInstance.Resize();
     }
 });
+
+window.cleanAndLoadItem = async function cleanAndLoadItem(fileData) {
+    await viewerContainer.viewerInstance.LoadModelFromUrlList(fileData);  
+}
