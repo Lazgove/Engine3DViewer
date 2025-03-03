@@ -1,5 +1,5 @@
 export function setupEventListeners(viewer) {
-    const resetButton = document.getElementById('reset-button');
+    const resetButton = document.getElementById('resetButton');
     const autoRotateCheckbox = document.getElementById('auto-rotate');
     const cotationCheckbox = document.getElementById('cotationCheckbox');
     const blackModeCheckbox = document.getElementById('blackMode');
