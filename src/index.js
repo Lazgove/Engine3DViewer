@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.cleanAndLoadItem = async function cleanAndLoadItem(fileData) {
-        console.log("IBHUIHUIHUIHUIHUI");
+        console.log(fileData);
         await viewerContainer.viewerInstance.LoadModelFromUrlList(fileData);  
     }
 

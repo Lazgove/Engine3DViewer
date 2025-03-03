@@ -104055,7 +104055,7 @@ document.addEventListener('DOMContentLoaded', function () {
       return _regeneratorRuntime().wrap(function _callee$(_context) {
         while (1) switch (_context.prev = _context.next) {
           case 0:
-            console.log("IBHUIHUIHUIHUIHUI");
+            console.log(fileData);
             _context.next = 3;
             return viewerContainer.viewerInstance.LoadModelFromUrlList(fileData);
           case 3:
