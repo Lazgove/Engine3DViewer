@@ -141,7 +141,7 @@ export class EmbeddedViewer
             onModelFinished : (importResult, threeObject) => {
                 this.parentElement.removeChild (progressDiv);
                 threeObject.name = "rootScene";
-                console.log(threeObject);
+                
                 this.canvas.style.display = 'inherit';
                 this.viewer.SetMainObject (threeObject);
                 let boundingSphere = this.viewer.GetBoundingSphere ((meshUserData) => {

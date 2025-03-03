@@ -101357,7 +101357,6 @@ var EmbeddedViewer = /*#__PURE__*/function () {
         onModelFinished: function onModelFinished(importResult, threeObject) {
           _this2.parentElement.removeChild(progressDiv);
           threeObject.name = "rootScene";
-          console.log(threeObject);
           _this2.canvas.style.display = 'inherit';
           _this2.viewer.SetMainObject(threeObject);
           var boundingSphere = _this2.viewer.GetBoundingSphere(function (meshUserData) {
@@ -101941,7 +101940,8 @@ var Navigation = /*#__PURE__*/function () {
     this.onMouseClick = null;
     this.onMouseMove = null;
     this.onContext = null;
-    this.minimumDistance = 0.1; // Default minimum distance
+    this.distance = null;
+    this.minimumDistance = 0; // Default minimum distance
     this.cameraMoveCallback = null; // Camera movement callback
 
     if (this.canvas.addEventListener) {
@@ -102199,19 +102199,6 @@ var Navigation = /*#__PURE__*/function () {
         this.camera.eye.Rotate(verticalDirection, -radAngleX, this.camera.center);
         this.camera.up = verticalDirection;
       }
-
-      // Ensure the new distance is not less than the minimum distance
-      var direction = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye);
-      var distance = direction.Length();
-      if (distance < this.minimumDistance) {
-        var move = this.minimumDistance - distance;
-        this.camera.eye.Offset(direction.Normalize(), move);
-      }
-
-      // Call the camera movement callback if it is set
-      if (this.cameraMoveCallback) {
-        this.cameraMoveCallback();
-      }
     }
   }, {
     key: "Pan",
@@ -102223,19 +102210,6 @@ var Navigation = /*#__PURE__*/function () {
       this.camera.center.Offset(horizontalDirection, -moveX);
       this.camera.eye.Offset(verticalDirection, moveY);
       this.camera.center.Offset(verticalDirection, moveY);
-
-      // Ensure the new distance is not less than the minimum distance
-      var direction = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye);
-      var distance = direction.Length();
-      if (distance < this.minimumDistance) {
-        var move = this.minimumDistance - distance;
-        this.camera.eye.Offset(direction.Normalize(), move);
-      }
-
-      // Call the camera movement callback if it is set
-      if (this.cameraMoveCallback) {
-        this.cameraMoveCallback();
-      }
     }
   }, {
     key: "Zoom",
@@ -102243,21 +102217,24 @@ var Navigation = /*#__PURE__*/function () {
       var direction = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye);
       var distance = direction.Length();
       var move = distance * ratio;
+      this.camera.eye.Offset(direction, move);
+    }
+  }, {
+    key: "Zoomz",
+    value: function Zoomz(ratio) {
+      var direction = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye);
+      var move = this.distance * ratio;
 
-      // Ensure the new distance is not less than the minimum distance
-      if (distance + move < this.minimumDistance) {
-        move = this.minimumDistance - distance;
-      }
+      // Calculate the new potential distance
+      var newDistance = this.distance - move;
 
-      // Only apply the move if it does not bring the camera closer than the minimum distance
-      if (distance + move >= this.minimumDistance) {
-        this.camera.eye.Offset(direction.Normalize(), move);
+      // Clamp the distance to not go below minimumDistance
+      if (newDistance < this.minimumDistance) {
+        move = this.distance - this.minimumDistance; // Adjust move to stop at min distance
       }
-
-      // Call the camera movement callback if it is set
-      if (this.cameraMoveCallback) {
-        this.cameraMoveCallback();
-      }
+      this.camera.eye.Offset(direction, move);
+      this.distance -= move; // Update distance correctly
+      this.Update();
     }
   }, {
     key: "setMinimumDistance",
@@ -102733,6 +102710,31 @@ var Viewer = /*#__PURE__*/function () {
     this.originalMaterial = null;
   }
   return _createClass(Viewer, [{
+    key: "SetupThreePointLighting",
+    value: function SetupThreePointLighting() {
+      var mainObject = this.mainModel.GetMainObject().GetRootObject();
+      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
+      var center = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var size = boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var maxDimension = Math.max(size.x, size.y, size.z);
+
+      // Key Light
+      var keyLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 1.0);
+      keyLight.position.set(center.x + maxDimension, center.y + maxDimension, center.z + maxDimension);
+      keyLight.castShadow = true;
+      this.scene.add(keyLight);
+
+      // Fill Light
+      var fillLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.5);
+      fillLight.position.set(center.x - maxDimension, center.y + maxDimension, center.z + maxDimension);
+      this.scene.add(fillLight);
+
+      // Back Light (Red)
+      var backLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.5);
+      backLight.position.set(center.x, center.y + maxDimension, center.z - maxDimension);
+      this.scene.add(backLight);
+    }
+  }, {
     key: "Init",
     value: function Init(canvas) {
       this.canvas = canvas;
@@ -103020,7 +103022,9 @@ var Viewer = /*#__PURE__*/function () {
       });
       this.isAnimating = true; // Start animating when the model is set
       console.log(this.initialPositions);
-      //this.UpdateCameraAndControls();
+
+      // Setup three-point lighting based on the new main object
+      this.SetupThreePointLighting();
       this.Render();
     }
   }, {
@@ -103140,7 +103144,7 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "onCameraMove",
     value: function onCameraMove() {
-      this.UpdateCameraAndControls();
+      //this.UpdateCameraAndControls();
       console.log('Camera moved');
       // Add any additional logic you want to execute when the camera moves
     }
@@ -103499,23 +103503,21 @@ var Viewer = /*#__PURE__*/function () {
     key: "UpdateCameraAndControls",
     value: function UpdateCameraAndControls() {
       var mainObject = this.mainModel.GetMainObject().GetRootObject();
-      var smoothFactor = 0.05;
       var distanceScaleFactor = 3;
       var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
-      var centerBbox = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-      var size = boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-      var maxDimension = Math.max(size.x, size.y, size.z) / 2;
-      var minDistance = maxDimension * distanceScaleFactor * 6;
+
+      // Calculate the bounding sphere from the bounding box
+      var boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere();
+      boundingBox.getBoundingSphere(boundingSphere);
+      var minDistance = boundingSphere.radius * distanceScaleFactor;
+      console.log(minDistance);
+
+      // Set the minimum distance for the camera
       this.navigation.setMinimumDistance(minDistance);
 
-      //const currentDistance = this.camera.position.distanceTo(centerBbox);
-      // if (currentDistance < minDistance) {
-      //     const direction = new THREE.Vector3().subVectors(this.camera.position, centerBbox).normalize();
-      //     this.targetPosition.copy(direction.multiplyScalar(minDistance).add(centerBbox));
-      //     this.camera.position.lerp(this.targetPosition, smoothFactor);
-      // }
-
-      // this.camera.lookAt(centerBbox);
+      // Call the Zoom method with a ratio of 0 to apply the minimum distance constraint
+      this.navigation.Zoom(0);
+      this.Render();
     }
   }]);
 }();

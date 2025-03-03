@@ -208,6 +208,30 @@ export class Viewer
         this.originalMaterial = null;
     }
 
+    SetupThreePointLighting() {
+        const mainObject = this.mainModel.GetMainObject().GetRootObject();
+        const boundingBox = new THREE.Box3().setFromObject(mainObject);
+        const center = boundingBox.getCenter(new THREE.Vector3());
+        const size = boundingBox.getSize(new THREE.Vector3());
+        const maxDimension = Math.max(size.x, size.y, size.z);
+
+        // Key Light
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        keyLight.position.set(center.x + maxDimension, center.y + maxDimension, center.z + maxDimension);
+        keyLight.castShadow = true;
+        this.scene.add(keyLight);
+
+        // Fill Light
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        fillLight.position.set(center.x - maxDimension, center.y + maxDimension, center.z + maxDimension);
+        this.scene.add(fillLight);
+
+        // Back Light (Red)
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        backLight.position.set(center.x, center.y + maxDimension, center.z - maxDimension);
+        this.scene.add(backLight);
+    }
+
     Init (canvas)
     {
         this.canvas = canvas;
@@ -234,6 +258,7 @@ export class Viewer
         this.InitNavigation ();
         this.InitShading ();
         this.InitMasks ();
+
         this.Render ();
 
         // Start the animation loop after initialization
@@ -514,7 +539,10 @@ export class Viewer
 
         this.isAnimating = true; // Start animating when the model is set
         console.log(this.initialPositions);
-        //this.UpdateCameraAndControls();
+
+        // Setup three-point lighting based on the new main object
+        this.SetupThreePointLighting();
+
         this.Render ();
     }
 
@@ -635,7 +663,7 @@ export class Viewer
     }
 
     onCameraMove() {
-        this.UpdateCameraAndControls();
+        //this.UpdateCameraAndControls();
         console.log('Camera moved');
         // Add any additional logic you want to execute when the camera moves
     }
@@ -1020,22 +1048,22 @@ export class Viewer
 
     UpdateCameraAndControls() {
         const mainObject = this.mainModel.GetMainObject().GetRootObject();
-        const smoothFactor = 0.05;
         const distanceScaleFactor = 3;
         const boundingBox = new THREE.Box3().setFromObject(mainObject);
-        const centerBbox = boundingBox.getCenter(new THREE.Vector3());
-        const size = boundingBox.getSize(new THREE.Vector3());
-        const maxDimension = Math.max(size.x, size.y, size.z) / 2;
-        const minDistance = maxDimension * distanceScaleFactor*6;
-        this.navigation.setMinimumDistance(minDistance);
-
-        //const currentDistance = this.camera.position.distanceTo(centerBbox);
-        // if (currentDistance < minDistance) {
-        //     const direction = new THREE.Vector3().subVectors(this.camera.position, centerBbox).normalize();
-        //     this.targetPosition.copy(direction.multiplyScalar(minDistance).add(centerBbox));
-        //     this.camera.position.lerp(this.targetPosition, smoothFactor);
-        // }
         
-        // this.camera.lookAt(centerBbox);
+        // Calculate the bounding sphere from the bounding box
+        const boundingSphere = new THREE.Sphere();
+        boundingBox.getBoundingSphere(boundingSphere);
+        
+        const minDistance = boundingSphere.radius * distanceScaleFactor;
+        console.log(minDistance);
+        
+        // Set the minimum distance for the camera
+        this.navigation.setMinimumDistance(minDistance);
+        
+        // Call the Zoom method with a ratio of 0 to apply the minimum distance constraint
+        this.navigation.Zoom(0);
+        
+        this.Render();
     }
 }
