@@ -102115,21 +102115,16 @@ var Navigation = /*#__PURE__*/function () {
       if (mouseButton === 1) {
         if (ev.ctrlKey) {
           navigationType = NavigationType.Zoom;
-        } else if (ev.shiftKey) {
-          navigationType = NavigationType.Pan;
         } else {
           navigationType = NavigationType.Orbit;
         }
       } else if (mouseButton === 2 || mouseButton === 3) {
-        navigationType = NavigationType.Pan;
+        // Disable panning
+        // navigationType = NavigationType.Pan;
       }
       if (navigationType === NavigationType.Orbit) {
         var orbitRatio = 0.5;
         this.Orbit(moveDiff.x * orbitRatio, moveDiff.y * orbitRatio);
-      } else if (navigationType === NavigationType.Pan) {
-        var eyeCenterDistance = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.CoordDistance3D)(this.camera.eye, this.camera.center);
-        var panRatio = 0.001 * eyeCenterDistance;
-        this.Pan(moveDiff.x * panRatio, moveDiff.y * panRatio);
       } else if (navigationType === NavigationType.Zoom) {
         var zoomRatio = 0.005;
         this.Zoom(-moveDiff.y * zoomRatio);
@@ -102175,16 +102170,15 @@ var Navigation = /*#__PURE__*/function () {
       if (fingerCount === 1) {
         navigationType = NavigationType.Orbit;
       } else if (fingerCount === 2) {
-        navigationType = NavigationType.Pan;
+        // Disable panning
+        // navigationType = NavigationType.Pan;
       }
       if (navigationType === NavigationType.Orbit) {
         var orbitRatio = 0.5;
         this.Orbit(moveDiff.x * orbitRatio, moveDiff.y * orbitRatio);
-      } else if (navigationType === NavigationType.Pan) {
+      } else if (navigationType === NavigationType.Zoom) {
         var zoomRatio = 0.005;
         this.Zoom(distanceDiff * zoomRatio);
-        var panRatio = 0.001 * (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.CoordDistance3D)(this.camera.eye, this.camera.center);
-        this.Pan(moveDiff.x * panRatio, moveDiff.y * panRatio);
       }
       this.Update();
     }
@@ -102244,17 +102238,19 @@ var Navigation = /*#__PURE__*/function () {
         this.camera.up = verticalDirection;
       }
     }
-  }, {
-    key: "Pan",
-    value: function Pan(moveX, moveY) {
-      var viewDirection = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye).Normalize();
-      var horizontalDirection = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.CrossVector3D)(viewDirection, this.camera.up).Normalize();
-      var verticalDirection = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.CrossVector3D)(horizontalDirection, viewDirection).Normalize();
-      this.camera.eye.Offset(horizontalDirection, -moveX);
-      this.camera.center.Offset(horizontalDirection, -moveX);
-      this.camera.eye.Offset(verticalDirection, moveY);
-      this.camera.center.Offset(verticalDirection, moveY);
-    }
+
+    // Disable the Pan method
+    // Pan(moveX, moveY) {
+    //     let viewDirection = SubCoord3D(this.camera.center, this.camera.eye).Normalize();
+    //     let horizontalDirection = CrossVector3D(viewDirection, this.camera.up).Normalize();
+    //     let verticalDirection = CrossVector3D(horizontalDirection, viewDirection).Normalize();
+
+    //     this.camera.eye.Offset(horizontalDirection, -moveX);
+    //     this.camera.center.Offset(horizontalDirection, -moveX);
+
+    //     this.camera.eye.Offset(verticalDirection, moveY);
+    //     this.camera.center.Offset(verticalDirection, moveY);
+    // }
   }, {
     key: "Zoom",
     value: function Zoom(ratio) {
@@ -102355,6 +102351,7 @@ function InitializeMasks(scene, resizable) {
   var vignette = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(maskGeometry, maskMaterial);
   vignette.name = "vignette";
   vignette.visible = true;
+  console.log(resizable.clientWidth, resizable.clientHeight);
   var maskGeometrySquare = new three__WEBPACK_IMPORTED_MODULE_0__.PlaneGeometry(2, 2);
   var maskMaterialSquare = new three__WEBPACK_IMPORTED_MODULE_0__.ShaderMaterial({
     uniforms: {
@@ -103207,6 +103204,7 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "InitMasks",
     value: function InitMasks() {
+      console.log(this.GetCanvas());
       var _InitializeMasks = (0,_repere_js__WEBPACK_IMPORTED_MODULE_9__.InitializeMasks)(this.GetScene(), this.GetCanvas()),
         vignette = _InitializeMasks.vignette,
         repere = _InitializeMasks.repere;
@@ -104022,7 +104020,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
 
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function () {
-  var viewerContainer = document.getElementById('3d-viewer');
+  var viewerContainer = document.getElementById('resizable');
   if (!viewerContainer) {
     console.error("Viewer container not found!");
     return;
@@ -104049,12 +104047,12 @@ document.addEventListener('DOMContentLoaded', function () {
   // Store the viewer instance in the container for later access
   viewerContainer.viewerInstance = viewer;
   // Setup event listeners
-  console.log("IHUIHSDHGIHUILDSHFIUGHUIHDGUIHGUIFDHGHUIGHFDSGUI");
+
   (0,_engine_viewer_eventListeners_js__WEBPACK_IMPORTED_MODULE_2__.setupEventListeners)(viewer);
 
   // Handle window resizing
   window.addEventListener('resize', function () {
-    var viewerContainer = document.getElementById('3d-viewer');
+    var viewerContainer = document.getElementById('resizable');
     if (viewerContainer && viewerContainer.viewerInstance) {
       viewerContainer.viewerInstance.Resize();
     }

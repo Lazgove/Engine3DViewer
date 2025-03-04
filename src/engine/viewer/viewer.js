@@ -681,6 +681,7 @@ export class Viewer
     }
 
     InitMasks () {
+        console.log(this.GetCanvas());
         const { vignette, repere } = InitializeMasks(this.GetScene(), this.GetCanvas());
         this.vignette = vignette;
         this.repere = repere;

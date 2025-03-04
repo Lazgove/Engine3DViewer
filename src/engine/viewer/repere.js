@@ -44,6 +44,7 @@ export function InitializeMasks(scene, resizable) {
     vignette.name = "vignette";
     vignette.visible = true;
 
+    console.log(resizable.clientWidth, resizable.clientHeight);
     const maskGeometrySquare = new THREE.PlaneGeometry(2, 2);
     const maskMaterialSquare = new THREE.ShaderMaterial({
         uniforms: {

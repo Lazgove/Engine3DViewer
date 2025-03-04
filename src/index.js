@@ -8,7 +8,7 @@ export { Engine, EmbeddedViewer };
 
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-    const viewerContainer = document.getElementById('3d-viewer');
+    const viewerContainer = document.getElementById('resizable');
 
     if (!viewerContainer) {
         console.error("Viewer container not found!");
@@ -28,12 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Store the viewer instance in the container for later access
     viewerContainer.viewerInstance = viewer;
     // Setup event listeners
-    console.log("IHUIHSDHGIHUILDSHFIUGHUIHDGUIHGUIFDHGHUIGHFDSGUI");
+
     setupEventListeners(viewer);
 
     // Handle window resizing
     window.addEventListener('resize', () => {
-        const viewerContainer = document.getElementById('3d-viewer');
+        const viewerContainer = document.getElementById('resizable');
         if (viewerContainer && viewerContainer.viewerInstance) {
             viewerContainer.viewerInstance.Resize();
         }
