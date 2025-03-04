@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Store the viewer instance in the container for later access
     viewerContainer.viewerInstance = viewer;
     // Setup event listeners
+    console.log("IHUIHSDHGIHUILDSHFIUGHUIHDGUIHGUIFDHGHUIGHFDSGUI");
     setupEventListeners(viewer);
 
     // Handle window resizing
