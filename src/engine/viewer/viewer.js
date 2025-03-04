@@ -855,7 +855,7 @@ export class Viewer
             boundingBoxHelper.visible = false;
         }
         boundingBoxHelper.userData.isAnnotation = true;
-        mainObject.add(boundingBoxHelper);
+        this.mainObject.add(boundingBoxHelper);
         boundingBoxHelper.position.set(centerBbox.x, centerBbox.y, centerBbox.z);
     }
 

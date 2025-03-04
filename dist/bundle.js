@@ -103282,10 +103282,10 @@ var Viewer = /*#__PURE__*/function () {
       var _this4 = this;
       requestAnimationFrame(this.animate);
       if (this.isAnimating && this.mainModel) {
-        var _mainObject = this.mainModel.GetMainObject().GetRootObject();
-        if (_mainObject) {
+        var mainObject = this.mainModel.GetMainObject().GetRootObject();
+        if (mainObject) {
           //this.UpdateCameraAndControls();
-          _mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
+          mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
         }
       }
       this.GetScene().traverse(function (child) {
@@ -103337,7 +103337,7 @@ var Viewer = /*#__PURE__*/function () {
       var height = size.y;
       var userDefinedDistance = factor / 100 * height;
       console.log("factor: " + factor);
-      console.log("   height: " + height);
+      console.log("height: " + height);
       console.log("userDefinedDistance: " + userDefinedDistance);
       var initialPositions = this.initialPositions;
       var directionVectors = this.directionVectors;
@@ -103384,7 +103384,7 @@ var Viewer = /*#__PURE__*/function () {
         boundingBoxHelper.visible = false;
       }
       boundingBoxHelper.userData.isAnnotation = true;
-      mainObject.add(boundingBoxHelper);
+      this.mainObject.add(boundingBoxHelper);
       boundingBoxHelper.position.set(centerBbox.x, centerBbox.y, centerBbox.z);
     }
   }, {
@@ -103497,8 +103497,8 @@ var Viewer = /*#__PURE__*/function () {
           var parentInverseMatrix = new three__WEBPACK_IMPORTED_MODULE_10__.Matrix4().copy(this.scene.getObjectByName('rootScene').matrixWorld).invert();
           var localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
           var newPosition = localIntersectionPoint.add(this.dragOffset);
-          var _mainObject2 = this.mainModel.GetMainObject().GetRootObject();
-          var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(_mainObject2);
+          var mainObject = this.mainModel.GetMainObject().GetRootObject();
+          var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
           var boxCenter = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
           boundingBox.getCenter(boxCenter);
           var boxSize = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
