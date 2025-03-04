@@ -807,7 +807,7 @@ export class Viewer
         // Calculate the bounding sphere radius
         const boundingSphere = new THREE.Sphere();
         this.boundingBox.getBoundingSphere(boundingSphere);
-        const maxDistance = boundingSphere.radius * 3;
+        const maxDistance = boundingSphere.radius*1.5;
 
         // Calculate the user-defined distance based on the factor
         const userDefinedDistance = (factor / 100) * maxDistance;
