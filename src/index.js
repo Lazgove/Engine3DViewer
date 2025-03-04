@@ -9,6 +9,7 @@ export { Engine, EmbeddedViewer };
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     const viewerContainer = document.getElementById('resizable');
+    console.log(viewerContainer);
 
     if (!viewerContainer) {
         console.error("Viewer container not found!");

@@ -101270,6 +101270,7 @@ var EmbeddedViewer = /*#__PURE__*/function () {
     this.viewer.Init(this.canvas);
     var width = this.parentElement.clientWidth;
     var height = this.parentElement.clientHeight;
+    console.log(width, height);
     this.viewer.Resize(width, height);
     if (this.parameters.projectionMode) {
       this.viewer.SetProjectionMode(this.parameters.projectionMode);
@@ -104021,6 +104022,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function () {
   var viewerContainer = document.getElementById('resizable');
+  console.log(viewerContainer);
   if (!viewerContainer) {
     console.error("Viewer container not found!");
     return;

@@ -48,6 +48,7 @@ export class EmbeddedViewer
 
         let width = this.parentElement.clientWidth;
         let height = this.parentElement.clientHeight;
+        console.log(width, height);
         this.viewer.Resize (width, height);
 
         if (this.parameters.projectionMode) {
