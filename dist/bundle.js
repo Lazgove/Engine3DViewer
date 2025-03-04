@@ -103345,7 +103345,7 @@ var Viewer = /*#__PURE__*/function () {
         return;
       }
       var index = 0;
-      mainObject.traverse(function (child) {
+      this.mainObject.traverse(function (child) {
         if (child.isMesh && child.name !== '') {
           if (index < directionVectors.length) {
             var direction = directionVectors[index].clone();

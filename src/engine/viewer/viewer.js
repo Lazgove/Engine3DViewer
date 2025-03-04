@@ -816,7 +816,7 @@ export class Viewer
 
         let index = 0;
 
-        mainObject.traverse((child) => {
+        this.mainObject.traverse((child) => {
             if (child.isMesh && child.name !== '') {
                 if (index < directionVectors.length) {
                     const direction = directionVectors[index].clone();
