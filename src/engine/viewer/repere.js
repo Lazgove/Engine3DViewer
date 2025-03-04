@@ -6,8 +6,7 @@ export function InitializeMasks(scene, resizable) {
     const maskMaterial = new THREE.ShaderMaterial({
         uniforms: {
             resolution: { value: new THREE.Vector2(viewerContainer.clientWidth, viewerContainer.clientHeight) },
-            radiusX: { value: 0.45 },
-            radiusY: { value: 0.45 },
+            radius: { value: 0.45 },
             edgeFade: { value: 0.1 },
         },
         vertexShader: `
@@ -19,22 +18,22 @@ export function InitializeMasks(scene, resizable) {
         `,
         fragmentShader: `
             uniform vec2 resolution;
-            uniform float radiusX; // Horizontal radius
-            uniform float radiusY; // Vertical radius
+            uniform float radius;
             uniform float edgeFade;
             varying vec2 vUv;
 
             void main() {
                 // Normalize coordinates to fit the canvas
                 vec2 uv = (vUv - 0.5) * vec2(resolution.x / resolution.y, 1.0); // Maintain aspect ratio
-                // Adjusted distance calculation for the oval shape
-                float dist = length(vec2(uv.x / radiusX, uv.y / radiusY)); // Scale by radii
+
+                // Calculate distance from center
+                float dist = length(uv);
 
                 // Calculate fade region using smoothstep for soft edges
-                float oval = smoothstep(1.0 - edgeFade, 1.0 + edgeFade, dist);
+                float vignette = smoothstep(radius, radius - edgeFade, dist);
 
-                // Inside the oval is visible (transparent), outside is black with smooth fade
-                gl_FragColor = vec4(0.0, 0.0, 0.0, oval);
+                // Inside the vignette is visible (transparent), outside is black with smooth fade
+                gl_FragColor = vec4(0.0, 0.0, 0.0, vignette);
             }
         `,
         transparent: true,
@@ -68,7 +67,7 @@ export function InitializeMasks(scene, resizable) {
 
             void main() {
                 // Normalize coordinates to fit the canvas
-                vec2 uv = (vUv - 0.5) * vec2(1.0, resolution.y / resolution.y); // Maintain aspect ratio
+                vec2 uv = (vUv - 0.5) * vec2(resolution.y / resolution.y, 1.0); // Maintain aspect ratio
 
                 // Calculate square bounds
                 float halfSize = squareSize / 2.0;  // Half the size of the square
