@@ -802,6 +802,9 @@ export class Viewer
 
         const height = this.mainObject.size ? this.mainObject.size.y : 0;
         const userDefinedDistance = (factor / 100) * height;
+        console.log()
+        console.log(height);
+        console.log(userDefinedDistance);
 
         const initialPositions = this.initialPositions;
         const directionVectors = this.directionVectors;
