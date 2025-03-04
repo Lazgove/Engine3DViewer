@@ -799,8 +799,8 @@ export class Viewer
     ExplodeModel(factor, duration = 0.5) {
         const startTime = performance.now();
         const endTime = startTime + duration * 1000;
-
-        const height = this.mainObject.size ? this.mainObject.size.y : 0;
+        const size = this.boundingBox.getSize(new THREE.Vector3());
+        const height = size.y;
         const userDefinedDistance = (factor / 100) * height;
         console.log(factor);
         console.log(height);

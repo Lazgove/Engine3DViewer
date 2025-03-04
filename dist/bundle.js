@@ -103333,7 +103333,8 @@ var Viewer = /*#__PURE__*/function () {
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.5;
       var startTime = performance.now();
       var endTime = startTime + duration * 1000;
-      var height = this.mainObject.size ? this.mainObject.size.y : 0;
+      var size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var height = size.y;
       var userDefinedDistance = factor / 100 * height;
       console.log(factor);
       console.log(height);
