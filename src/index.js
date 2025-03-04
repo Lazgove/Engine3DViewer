@@ -29,41 +29,37 @@ document.addEventListener('DOMContentLoaded', () => {
     viewerContainer.viewerInstance = viewer;
     // Setup event listeners
     setupEventListeners(viewer);
-    // const files = await fetchDynamoData(false, 'hj');
-    // const fileData = files[0];
-    // cleanAndLoadItem(fileData);
 
     // Handle window resizing
     window.addEventListener('resize', () => {
         const viewerContainer = document.getElementById('3d-viewer');
         if (viewerContainer && viewerContainer.viewerInstance) {
-
             viewerContainer.viewerInstance.Resize();
         }
     });
 
-    window.cleanAndLoadItem = async function cleanAndLoadItem(fileData) {
-        viewerContainer.viewerInstance.LoadModelFromUrlList(fileData);  
-    }
-
     window.cleanAndLoadItem = async function cleanAndLoadItem(selectedItem) {
-    
         if (selectedItem) {
             const files = await fetchDynamoData(false, selectedItem);
             const fileData = files[0];
             console.log(fileData);
-            viewerContainer.viewerInstance.LoadModelFromUrlList(fileData); 
-            // console.log(fileData);
-            // const objectsUrls = fileData.objectsUrls.split(",").join(",");
-            // const animationsUrls = fileData.animationsUrls.split(",").join(",");
-            // const texturesUrls = fileData.texturesUrls.split(",").join(",");
-            // const mtlUrls = fileData.mtlUrls.split(",").join(",");
-            // console.log(objectsUrls);
-            // console.log(texturesUrls);
-            // await loadAndGroupModels(objectsUrls, texturesUrls, mtlUrls);    
-            // window.startExplosionAndAdjustCamera(slider.value);
+
+            // Create the modelUrls array
+            const modelUrls = [];
+            if (fileData.objectsUrls) {
+                modelUrls.push(fileData.objectsUrls);
+            }
+            if (fileData.texturesUrls) {
+                modelUrls.push(...fileData.texturesUrls.split(','));
+            }
+            if (fileData.mtlUrls) {
+                modelUrls.push(...fileData.mtlUrls.split(','));
+            }
+
+            // Load the model using the modelUrls array
+            viewerContainer.viewerInstance.LoadModelFromUrlList(modelUrls);
         }
-    }
+    };
 
     async function fetchDynamoData(init, selectedItem) {    
         const lambdaUrl = "https://2uhjohkckl.execute-api.eu-west-3.amazonaws.com/production/fetchDynamoDB";
