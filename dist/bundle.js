@@ -104067,6 +104067,103 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     return cleanAndLoadItem;
   }();
+  window.cleanAndLoadItem = /*#__PURE__*/function () {
+    var _cleanAndLoadItem2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(selectedItem) {
+      var files, fileData;
+      return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+        while (1) switch (_context2.prev = _context2.next) {
+          case 0:
+            if (!selectedItem) {
+              _context2.next = 6;
+              break;
+            }
+            _context2.next = 3;
+            return fetchDynamoData(false, selectedItem);
+          case 3:
+            files = _context2.sent;
+            fileData = files[0];
+            viewerContainer.viewerInstance.LoadModelFromUrlList(fileData);
+            // console.log(fileData);
+            // const objectsUrls = fileData.objectsUrls.split(",").join(",");
+            // const animationsUrls = fileData.animationsUrls.split(",").join(",");
+            // const texturesUrls = fileData.texturesUrls.split(",").join(",");
+            // const mtlUrls = fileData.mtlUrls.split(",").join(",");
+            // console.log(objectsUrls);
+            // console.log(texturesUrls);
+            // await loadAndGroupModels(objectsUrls, texturesUrls, mtlUrls);    
+            // window.startExplosionAndAdjustCamera(slider.value);
+          case 6:
+          case "end":
+            return _context2.stop();
+        }
+      }, _callee2);
+    }));
+    function cleanAndLoadItem(_x2) {
+      return _cleanAndLoadItem2.apply(this, arguments);
+    }
+    return cleanAndLoadItem;
+  }();
+  function fetchDynamoData(_x3, _x4) {
+    return _fetchDynamoData.apply(this, arguments);
+  }
+  function _fetchDynamoData() {
+    _fetchDynamoData = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(init, selectedItem) {
+      var lambdaUrl, response, data, items;
+      return _regeneratorRuntime().wrap(function _callee3$(_context3) {
+        while (1) switch (_context3.prev = _context3.next) {
+          case 0:
+            lambdaUrl = "https://2uhjohkckl.execute-api.eu-west-3.amazonaws.com/production/fetchDynamoDB";
+            _context3.prev = 1;
+            _context3.next = 4;
+            return fetch(lambdaUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                userID: userID,
+                selectedItem: selectedItem
+              })
+            });
+          case 4:
+            response = _context3.sent;
+            if (response.ok) {
+              _context3.next = 7;
+              break;
+            }
+            throw new Error("HTTP error! status: ".concat(response.status));
+          case 7:
+            _context3.next = 9;
+            return response.json();
+          case 9:
+            data = _context3.sent;
+            console.log("Data received from Lambda:", data);
+            items = JSON.parse(data.body);
+            if (!init) {
+              _context3.next = 16;
+              break;
+            }
+            populateDropdown(items);
+            _context3.next = 17;
+            break;
+          case 16:
+            return _context3.abrupt("return", items);
+          case 17:
+            _context3.next = 23;
+            break;
+          case 19:
+            _context3.prev = 19;
+            _context3.t0 = _context3["catch"](1);
+            console.error("Error calling Lambda function:", _context3.t0);
+            throw _context3.t0;
+          case 23:
+          case "end":
+            return _context3.stop();
+        }
+      }, _callee3, null, [[1, 19]]);
+    }));
+    return _fetchDynamoData.apply(this, arguments);
+  }
 });
 })();
 

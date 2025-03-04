@@ -37,12 +37,63 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', () => {
         const viewerContainer = document.getElementById('3d-viewer');
         if (viewerContainer && viewerContainer.viewerInstance) {
+
             viewerContainer.viewerInstance.Resize();
         }
     });
 
     window.cleanAndLoadItem = async function cleanAndLoadItem(fileData) {
         viewerContainer.viewerInstance.LoadModelFromUrlList(fileData);  
+    }
+
+    window.cleanAndLoadItem = async function cleanAndLoadItem(selectedItem) {
+    
+        if (selectedItem) {
+            const files = await fetchDynamoData(false, selectedItem);
+            const fileData = files[0];
+            viewerContainer.viewerInstance.LoadModelFromUrlList(fileData); 
+            // console.log(fileData);
+            // const objectsUrls = fileData.objectsUrls.split(",").join(",");
+            // const animationsUrls = fileData.animationsUrls.split(",").join(",");
+            // const texturesUrls = fileData.texturesUrls.split(",").join(",");
+            // const mtlUrls = fileData.mtlUrls.split(",").join(",");
+            // console.log(objectsUrls);
+            // console.log(texturesUrls);
+            // await loadAndGroupModels(objectsUrls, texturesUrls, mtlUrls);    
+            // window.startExplosionAndAdjustCamera(slider.value);
+        }
+    }
+
+    async function fetchDynamoData(init, selectedItem) {    
+        const lambdaUrl = "https://2uhjohkckl.execute-api.eu-west-3.amazonaws.com/production/fetchDynamoDB";
+    
+        try {
+            const response = await fetch(lambdaUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ userID: userID, selectedItem: selectedItem }),
+            });
+    
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+    
+            const data = await response.json();
+            console.log("Data received from Lambda:", data);
+    
+            const items = JSON.parse(data.body);
+    
+            if (init) {
+                populateDropdown(items);
+            } else {
+                return items;
+            }
+        } catch (error) {
+            console.error("Error calling Lambda function:", error);
+            throw error;
+        }
     }
 
 });
