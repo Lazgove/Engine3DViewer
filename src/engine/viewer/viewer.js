@@ -839,7 +839,7 @@ export class Viewer
     CreateBoundingBoxMesh() {
 
         const centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
-        const size = boundingBox.getSize(new THREE.Vector3());
+        const size = this.boundingBox.getSize(new THREE.Vector3());
         const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
         const boxMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
         const boundingBoxHelper = new THREE.LineSegments(

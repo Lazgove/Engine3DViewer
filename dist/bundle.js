@@ -103368,7 +103368,7 @@ var Viewer = /*#__PURE__*/function () {
     key: "CreateBoundingBoxMesh",
     value: function CreateBoundingBoxMesh() {
       var centerBbox = this.boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-      var size = boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       var boxGeometry = new three__WEBPACK_IMPORTED_MODULE_10__.BoxGeometry(1, 1, 1);
       var boxMaterial = new three__WEBPACK_IMPORTED_MODULE_10__.LineBasicMaterial({
         color: 0xff0000
@@ -103497,11 +103497,11 @@ var Viewer = /*#__PURE__*/function () {
           var localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
           var newPosition = localIntersectionPoint.add(this.dragOffset);
           var _mainObject2 = this.mainModel.GetMainObject().GetRootObject();
-          var _boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(_mainObject2);
+          var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(_mainObject2);
           var boxCenter = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
-          _boundingBox.getCenter(boxCenter);
+          boundingBox.getCenter(boxCenter);
           var boxSize = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
-          _boundingBox.getSize(boxSize);
+          boundingBox.getSize(boxSize);
           var maxDimension = Math.max(boxSize.x, boxSize.y, boxSize.z);
           var scaledHalfSize = maxDimension * 3 / 2;
           var movementLimits = {
