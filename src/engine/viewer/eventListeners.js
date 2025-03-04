@@ -140,6 +140,8 @@ export function setupEventListeners(viewer) {
     // Update the hidden slider value and trigger the function
     slider.addEventListener("input", function() {
         const value = this.value;
+        console.log("value");
+        console.log(value);
         updateSliderProgress(this);
         viewer.GetViewer().ExplodeModel(value, 0.5)
     });
