@@ -102732,6 +102732,8 @@ var Viewer = /*#__PURE__*/function () {
     };
     this.mainObject = null;
     this.boundingBox = null;
+    this.centerBbox = null;
+    this.size = null;
     this.rotationSpeed = 0; // Rotation speed in radians per frame
     this.isEasing = false;
     this.isAnimating = false;
@@ -103067,6 +103069,8 @@ var Viewer = /*#__PURE__*/function () {
       this.isAnimating = true; // Start animating when the model is set
       this.mainObject = this.mainModel.GetMainObject().GetRootObject();
       this.boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(this.mainObject, true);
+      this.centerBbox = this.boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      this.size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       // Setup three-point lighting based on the new main object
       this.SetupThreePointLighting();
       this.Render();
@@ -103331,11 +103335,17 @@ var Viewer = /*#__PURE__*/function () {
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.5;
       var startTime = performance.now();
       var endTime = startTime + duration * 1000;
-      var size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-      var height = size.y;
-      var userDefinedDistance = factor / 100 * height;
+
+      // Calculate the bounding sphere radius
+      var boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere();
+      this.boundingBox.getBoundingSphere(boundingSphere);
+      var maxDistance = boundingSphere.radius * 3;
+
+      // Calculate the user-defined distance based on the factor
+      var userDefinedDistance = factor / 100 * maxDistance;
       console.log("factor: " + factor);
-      console.log("height: " + height);
+      console.log("boundingSphere.radius: " + boundingSphere.radius);
+      console.log("maxDistance: " + maxDistance);
       console.log("userDefinedDistance: " + userDefinedDistance);
       var initialPositions = this.initialPositions;
       var directionVectors = this.directionVectors;

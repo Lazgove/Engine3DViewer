@@ -27,7 +27,6 @@ export function InitializeMasks(scene, resizable) {
             void main() {
                 // Normalize coordinates to fit the canvas
                 vec2 uv = (vUv - 0.5) * vec2(resolution.x / resolution.y, 1.0); // Maintain aspect ratio
-                //vec2 uv = (vUv - 0.5) * vec2(1.0, 1.0);
                 // Adjusted distance calculation for the oval shape
                 float dist = length(vec2(uv.x / radiusX, uv.y / radiusY)); // Scale by radii
 
@@ -69,7 +68,7 @@ export function InitializeMasks(scene, resizable) {
 
             void main() {
                 // Normalize coordinates to fit the canvas
-                vec2 uv = (vUv - 0.5) * vec2(resolution.x / resolution.y, 1.0); // Maintain aspect ratio
+                vec2 uv = (vUv - 0.5) * vec2(1.0, resolution.y / resolution.y); // Maintain aspect ratio
 
                 // Calculate square bounds
                 float halfSize = squareSize / 2.0;  // Half the size of the square
@@ -99,5 +98,8 @@ export function InitializeMasks(scene, resizable) {
     repere.name = "repere";
     repere.visible = false;
 
-    return {vignette, repere};
+    scene.add(vignette);
+    scene.add(repere);
+
+    return { vignette, repere };
 }

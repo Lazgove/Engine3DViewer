@@ -186,6 +186,8 @@ export class Viewer
 
         this.mainObject = null;
         this.boundingBox = null;
+        this.centerBbox = null;
+        this.size = null;
         this.rotationSpeed = 0; // Rotation speed in radians per frame
         this.isEasing = false;
         this.isAnimating = false;
@@ -542,6 +544,8 @@ export class Viewer
         this.isAnimating = true; // Start animating when the model is set
         this.mainObject = this.mainModel.GetMainObject().GetRootObject();
         this.boundingBox = new THREE.Box3().setFromObject(this.mainObject, true);
+        this.centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
+        this.size = this.boundingBox.getSize(new THREE.Vector3());
         // Setup three-point lighting based on the new main object
         this.SetupThreePointLighting();
 
@@ -799,11 +803,17 @@ export class Viewer
     ExplodeModel(factor, duration = 0.5) {
         const startTime = performance.now();
         const endTime = startTime + duration * 1000;
-        const size = this.boundingBox.getSize(new THREE.Vector3());
-        const height = size.y;
-        const userDefinedDistance = (factor / 100) * height;
+
+        // Calculate the bounding sphere radius
+        const boundingSphere = new THREE.Sphere();
+        this.boundingBox.getBoundingSphere(boundingSphere);
+        const maxDistance = boundingSphere.radius * 3;
+
+        // Calculate the user-defined distance based on the factor
+        const userDefinedDistance = (factor / 100) * maxDistance;
         console.log("factor: " + factor);
-        console.log("height: " + height);
+        console.log("boundingSphere.radius: " + boundingSphere.radius);
+        console.log("maxDistance: " + maxDistance);
         console.log("userDefinedDistance: " + userDefinedDistance);
 
         const initialPositions = this.initialPositions;
