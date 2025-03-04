@@ -102329,11 +102329,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
 
 function InitializeMasks(scene, resizable) {
+  var viewerContainer = document.getElementById('3d-viewer');
   var maskGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.PlaneGeometry(2, 2);
   var maskMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.ShaderMaterial({
     uniforms: {
       resolution: {
-        value: new three__WEBPACK_IMPORTED_MODULE_0__.Vector2(resizable.clientWidth, resizable.clientHeight)
+        value: new three__WEBPACK_IMPORTED_MODULE_0__.Vector2(viewerContainer.clientWidth, viewerContainer.clientHeight)
       },
       radiusX: {
         value: 0.45
@@ -102352,12 +102353,11 @@ function InitializeMasks(scene, resizable) {
   var vignette = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(maskGeometry, maskMaterial);
   vignette.name = "vignette";
   vignette.visible = true;
-  console.log(resizable.clientWidth, resizable.clientHeight);
   var maskGeometrySquare = new three__WEBPACK_IMPORTED_MODULE_0__.PlaneGeometry(2, 2);
   var maskMaterialSquare = new three__WEBPACK_IMPORTED_MODULE_0__.ShaderMaterial({
     uniforms: {
       resolution: {
-        value: new three__WEBPACK_IMPORTED_MODULE_0__.Vector2(resizable.clientWidth, resizable.clientHeight)
+        value: new three__WEBPACK_IMPORTED_MODULE_0__.Vector2(viewerContainer.clientWidth, viewerContainer.clientHeight)
       },
       squareSize: {
         value: 0.99
@@ -103205,7 +103205,6 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "InitMasks",
     value: function InitMasks() {
-      console.log(this.GetCanvas());
       var _InitializeMasks = (0,_repere_js__WEBPACK_IMPORTED_MODULE_9__.InitializeMasks)(this.GetScene(), this.GetCanvas()),
         vignette = _InitializeMasks.vignette,
         repere = _InitializeMasks.repere;
@@ -104021,8 +104020,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
 
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function () {
-  var viewerContainer = document.getElementById('resizable');
-  console.log(viewerContainer);
+  var viewerContainer = document.getElementById('3d-viewer');
   if (!viewerContainer) {
     console.error("Viewer container not found!");
     return;
@@ -104054,7 +104052,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Handle window resizing
   window.addEventListener('resize', function () {
-    var viewerContainer = document.getElementById('resizable');
+    var viewerContainer = document.getElementById('3d-viewer');
     if (viewerContainer && viewerContainer.viewerInstance) {
       viewerContainer.viewerInstance.Resize();
     }

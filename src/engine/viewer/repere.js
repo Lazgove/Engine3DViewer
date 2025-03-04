@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 
 export function InitializeMasks(scene, resizable) {
+    const viewerContainer = document.getElementById('3d-viewer');
     const maskGeometry = new THREE.PlaneGeometry(2, 2);
     const maskMaterial = new THREE.ShaderMaterial({
         uniforms: {
-            resolution: { value: new THREE.Vector2(resizable.clientWidth, resizable.clientHeight) },
+            resolution: { value: new THREE.Vector2(viewerContainer.clientWidth, viewerContainer.clientHeight) },
             radiusX: { value: 0.45 },
             radiusY: { value: 0.45 },
             edgeFade: { value: 0.1 },
@@ -44,11 +45,10 @@ export function InitializeMasks(scene, resizable) {
     vignette.name = "vignette";
     vignette.visible = true;
 
-    console.log(resizable.clientWidth, resizable.clientHeight);
     const maskGeometrySquare = new THREE.PlaneGeometry(2, 2);
     const maskMaterialSquare = new THREE.ShaderMaterial({
         uniforms: {
-            resolution: { value: new THREE.Vector2(resizable.clientWidth, resizable.clientHeight) },
+            resolution: { value: new THREE.Vector2(viewerContainer.clientWidth, viewerContainer.clientHeight) },
             squareSize: { value: 0.99 },
             borderThickness: { value: 0.01 },
             borderColor: { value: new THREE.Color(1.0, 0.0, 0.0) }
