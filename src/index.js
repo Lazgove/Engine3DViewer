@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedItem) {
             const files = await fetchDynamoData(false, selectedItem);
             const fileData = files[0];
+            console.log(fileData);
             viewerContainer.viewerInstance.LoadModelFromUrlList(fileData); 
             // console.log(fileData);
             // const objectsUrls = fileData.objectsUrls.split(",").join(",");

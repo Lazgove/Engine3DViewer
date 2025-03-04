@@ -104074,7 +104074,7 @@ document.addEventListener('DOMContentLoaded', function () {
         while (1) switch (_context2.prev = _context2.next) {
           case 0:
             if (!selectedItem) {
-              _context2.next = 6;
+              _context2.next = 7;
               break;
             }
             _context2.next = 3;
@@ -104082,6 +104082,7 @@ document.addEventListener('DOMContentLoaded', function () {
           case 3:
             files = _context2.sent;
             fileData = files[0];
+            console.log(fileData);
             viewerContainer.viewerInstance.LoadModelFromUrlList(fileData);
             // console.log(fileData);
             // const objectsUrls = fileData.objectsUrls.split(",").join(",");
@@ -104092,7 +104093,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // console.log(texturesUrls);
             // await loadAndGroupModels(objectsUrls, texturesUrls, mtlUrls);    
             // window.startExplosionAndAdjustCamera(slider.value);
-          case 6:
+          case 7:
           case "end":
             return _context2.stop();
         }
