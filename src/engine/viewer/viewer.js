@@ -184,6 +184,8 @@ export class Viewer
             animationSteps : 40
         };
 
+        this.mainObject = null;
+        this.boundingBox = null;
         this.rotationSpeed = 0; // Rotation speed in radians per frame
         this.isEasing = false;
         this.isAnimating = false;
@@ -538,8 +540,8 @@ export class Viewer
         });
 
         this.isAnimating = true; // Start animating when the model is set
-        console.log(this.initialPositions);
-
+        this.mainObject = this.mainModel.GetMainObject().GetRootObject();
+        this.boundingBox = new THREE.Box3().setFromObject(this.mainObject, true);
         // Setup three-point lighting based on the new main object
         this.SetupThreePointLighting();
 
@@ -797,7 +799,9 @@ export class Viewer
     ExplodeModel(factor, duration = 0.5) {
         const startTime = performance.now();
         const endTime = startTime + duration * 1000;
-        const mainObject = this.mainModel.GetMainObject().GetRootObject();
+
+        const height = this.mainObject.size ? this.mainObject.size.y : 0;
+        const userDefinedDistance = (factor / 100) * height;
 
         const initialPositions = this.initialPositions;
         const directionVectors = this.directionVectors;
@@ -813,7 +817,7 @@ export class Viewer
             if (child.isMesh && child.name !== '') {
                 if (index < directionVectors.length) {
                     const direction = directionVectors[index].clone();
-                    const newPosition = initialPositions[index].clone().add(direction.multiplyScalar(factor));
+                    const newPosition = initialPositions[index].clone().add(direction.multiplyScalar(userDefinedDistance));
                     gsap.to(child.position, {
                         x: newPosition.x,
                         y: newPosition.y,
@@ -831,9 +835,7 @@ export class Viewer
 
     CreateBoundingBoxMesh() {
 
-        const mainObject = this.mainModel.GetMainObject().GetRootObject();
-        const boundingBox = new THREE.Box3().setFromObject(mainObject);
-        const centerBbox = boundingBox.getCenter(new THREE.Vector3());
+        const centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
         const size = boundingBox.getSize(new THREE.Vector3());
         const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
         const boxMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
@@ -1047,13 +1049,11 @@ export class Viewer
     };
 
     UpdateCameraAndControls() {
-        const mainObject = this.mainModel.GetMainObject().GetRootObject();
         const distanceScaleFactor = 3;
-        const boundingBox = new THREE.Box3().setFromObject(mainObject);
-        
+
         // Calculate the bounding sphere from the bounding box
         const boundingSphere = new THREE.Sphere();
-        boundingBox.getBoundingSphere(boundingSphere);
+        this.boundingBox.getBoundingSphere(boundingSphere);
         
         const minDistance = boundingSphere.radius * distanceScaleFactor;
         console.log(minDistance);

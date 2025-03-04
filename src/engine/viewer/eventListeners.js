@@ -141,7 +141,7 @@ export function setupEventListeners(viewer) {
     slider.addEventListener("input", function() {
         const value = this.value;
         updateSliderProgress(this);
-        viewer.GetViewer().ExplodeModel(value, 0.5, viewer.GetViewer())
+        viewer.GetViewer().ExplodeModel(value, 0.5)
     });
 
     // Function to update the slider progress color
