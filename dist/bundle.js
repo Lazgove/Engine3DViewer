@@ -101709,8 +101709,10 @@ function setupEventListeners(viewer) {
   // Update the hidden slider value and trigger the function
   slider.addEventListener("input", function () {
     var value = this.value;
+    console.log("value");
+    console.log(value);
     updateSliderProgress(this);
-    viewer.GetViewer().ExplodeModel(value, 0.5, viewer.GetViewer());
+    viewer.GetViewer().ExplodeModel(value, 0.5);
   });
 
   // Function to update the slider progress color
@@ -102730,6 +102732,8 @@ var Viewer = /*#__PURE__*/function () {
     this.settings = {
       animationSteps: 40
     };
+    this.mainObject = null;
+    this.boundingBox = null;
     this.rotationSpeed = 0; // Rotation speed in radians per frame
     this.isEasing = false;
     this.isAnimating = false;
@@ -103063,8 +103067,8 @@ var Viewer = /*#__PURE__*/function () {
         }
       });
       this.isAnimating = true; // Start animating when the model is set
-      console.log(this.initialPositions);
-
+      this.mainObject = this.mainModel.GetMainObject().GetRootObject();
+      this.boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(this.mainObject, true);
       // Setup three-point lighting based on the new main object
       this.SetupThreePointLighting();
       this.Render();
@@ -103278,10 +103282,10 @@ var Viewer = /*#__PURE__*/function () {
       var _this4 = this;
       requestAnimationFrame(this.animate);
       if (this.isAnimating && this.mainModel) {
-        var mainObject = this.mainModel.GetMainObject().GetRootObject();
-        if (mainObject) {
+        var _mainObject = this.mainModel.GetMainObject().GetRootObject();
+        if (_mainObject) {
           //this.UpdateCameraAndControls();
-          mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
+          _mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
         }
       }
       this.GetScene().traverse(function (child) {
@@ -103329,7 +103333,11 @@ var Viewer = /*#__PURE__*/function () {
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.5;
       var startTime = performance.now();
       var endTime = startTime + duration * 1000;
-      var mainObject = this.mainModel.GetMainObject().GetRootObject();
+      var height = this.mainObject.size ? this.mainObject.size.y : 0;
+      var userDefinedDistance = factor / 100 * height;
+      console.log(factor);
+      console.log(height);
+      console.log(userDefinedDistance);
       var initialPositions = this.initialPositions;
       var directionVectors = this.directionVectors;
       if (!initialPositions || !directionVectors) {
@@ -103341,7 +103349,7 @@ var Viewer = /*#__PURE__*/function () {
         if (child.isMesh && child.name !== '') {
           if (index < directionVectors.length) {
             var direction = directionVectors[index].clone();
-            var newPosition = initialPositions[index].clone().add(direction.multiplyScalar(factor));
+            var newPosition = initialPositions[index].clone().add(direction.multiplyScalar(userDefinedDistance));
             gsap__WEBPACK_IMPORTED_MODULE_12__["default"].to(child.position, {
               x: newPosition.x,
               y: newPosition.y,
@@ -103359,9 +103367,7 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "CreateBoundingBoxMesh",
     value: function CreateBoundingBoxMesh() {
-      var mainObject = this.mainModel.GetMainObject().GetRootObject();
-      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
-      var centerBbox = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var centerBbox = this.boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       var size = boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       var boxGeometry = new three__WEBPACK_IMPORTED_MODULE_10__.BoxGeometry(1, 1, 1);
       var boxMaterial = new three__WEBPACK_IMPORTED_MODULE_10__.LineBasicMaterial({
@@ -103490,12 +103496,12 @@ var Viewer = /*#__PURE__*/function () {
           var parentInverseMatrix = new three__WEBPACK_IMPORTED_MODULE_10__.Matrix4().copy(this.scene.getObjectByName('rootScene').matrixWorld).invert();
           var localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
           var newPosition = localIntersectionPoint.add(this.dragOffset);
-          var mainObject = this.mainModel.GetMainObject().GetRootObject();
-          var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
+          var _mainObject2 = this.mainModel.GetMainObject().GetRootObject();
+          var _boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(_mainObject2);
           var boxCenter = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
-          boundingBox.getCenter(boxCenter);
+          _boundingBox.getCenter(boxCenter);
           var boxSize = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
-          boundingBox.getSize(boxSize);
+          _boundingBox.getSize(boxSize);
           var maxDimension = Math.max(boxSize.x, boxSize.y, boxSize.z);
           var scaledHalfSize = maxDimension * 3 / 2;
           var movementLimits = {
@@ -103544,13 +103550,11 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "UpdateCameraAndControls",
     value: function UpdateCameraAndControls() {
-      var mainObject = this.mainModel.GetMainObject().GetRootObject();
       var distanceScaleFactor = 3;
-      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
 
       // Calculate the bounding sphere from the bounding box
       var boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere();
-      boundingBox.getBoundingSphere(boundingSphere);
+      this.boundingBox.getBoundingSphere(boundingSphere);
       var minDistance = boundingSphere.radius * distanceScaleFactor;
       console.log(minDistance);
 
@@ -104044,6 +104048,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Store the viewer instance in the container for later access
   viewerContainer.viewerInstance = viewer;
   // Setup event listeners
+  console.log("IHUIHSDHGIHUILDSHFIUGHUIHDGUIHGUIFDHGHUIGHFDSGUI");
   (0,_engine_viewer_eventListeners_js__WEBPACK_IMPORTED_MODULE_2__.setupEventListeners)(viewer);
 
   // Handle window resizing
