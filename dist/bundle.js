@@ -103336,9 +103336,9 @@ var Viewer = /*#__PURE__*/function () {
       var size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       var height = size.y;
       var userDefinedDistance = factor / 100 * height;
-      console.log(factor);
-      console.log(height);
-      console.log(userDefinedDistance);
+      console.log("factor: " + factor);
+      console.log("   height: " + height);
+      console.log("userDefinedDistance: " + userDefinedDistance);
       var initialPositions = this.initialPositions;
       var directionVectors = this.directionVectors;
       if (!initialPositions || !directionVectors) {

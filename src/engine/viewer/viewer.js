@@ -802,9 +802,9 @@ export class Viewer
         const size = this.boundingBox.getSize(new THREE.Vector3());
         const height = size.y;
         const userDefinedDistance = (factor / 100) * height;
-        console.log(factor);
-        console.log(height);
-        console.log(userDefinedDistance);
+        console.log("factor: " + factor);
+        console.log("height: " + height);
+        console.log("userDefinedDistance: " + userDefinedDistance);
 
         const initialPositions = this.initialPositions;
         const directionVectors = this.directionVectors;
