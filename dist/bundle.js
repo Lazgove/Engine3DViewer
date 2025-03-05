@@ -101623,6 +101623,7 @@ function setupEventListeners(viewer) {
     });
   }
   repereCheckbox.addEventListener('change', function () {
+    console.log('fuck you');
     var repere = viewer.GetViewer().GetRepere();
     if (repereCheckbox.checked && blackModeCheckbox.checked) {
       repere.visible = true;
@@ -102336,7 +102337,10 @@ function InitializeMasks(scene, resizable) {
       resolution: {
         value: new three__WEBPACK_IMPORTED_MODULE_0__.Vector2(viewerContainer.clientWidth, viewerContainer.clientHeight)
       },
-      radius: {
+      radiusX: {
+        value: 0.45
+      },
+      radiusY: {
         value: 0.45
       },
       edgeFade: {
@@ -102344,7 +102348,7 @@ function InitializeMasks(scene, resizable) {
       }
     },
     vertexShader: "\n            varying vec2 vUv;\n            void main() {\n                vUv = uv;\n                gl_Position = vec4(position, 1.0);\n            }\n        ",
-    fragmentShader: "\n            uniform vec2 resolution;\n            uniform float radius;\n            uniform float edgeFade;\n            varying vec2 vUv;\n\n            void main() {\n                // Normalize coordinates to fit the canvas\n                vec2 uv = (vUv - 0.5) * vec2(resolution.x / resolution.y, 1.0); // Maintain aspect ratio\n\n                // Calculate distance from center\n                float dist = length(uv);\n\n                // Calculate fade region using smoothstep for soft edges\n                float vignette = smoothstep(radius, radius - edgeFade, dist);\n\n                // Inside the vignette is visible (transparent), outside is black with smooth fade\n                gl_FragColor = vec4(0.0, 0.0, 0.0, vignette);\n            }\n        ",
+    fragmentShader: "\n            uniform vec2 resolution;\n            uniform float radiusX; // Horizontal radius\n            uniform float radiusY; // Vertical radius\n            uniform float edgeFade;\n            varying vec2 vUv;\n\n            void main() {\n                // Normalize coordinates to fit the canvas\n                vec2 uv = (vUv - 0.5) * vec2(resolution.x / resolution.y, 1.0); // Maintain aspect ratio\n                // Adjusted distance calculation for the oval shape\n                float dist = length(vec2(uv.x / radiusX, uv.y / radiusY)); // Scale by radii\n\n                // Calculate fade region using smoothstep for soft edges\n                float oval = smoothstep(1.0 - edgeFade, 1.0 + edgeFade, dist);\n\n                // Inside the oval is visible (transparent), outside is black with smooth fade\n                gl_FragColor = vec4(0.0, 0.0, 0.0, oval);\n            }\n        ",
     transparent: true
   });
   var vignette = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(maskGeometry, maskMaterial);
@@ -102366,8 +102370,8 @@ function InitializeMasks(scene, resizable) {
         value: new three__WEBPACK_IMPORTED_MODULE_0__.Color(1.0, 0.0, 0.0)
       }
     },
-    vertexShader: "\n            varying vec2 vUv;\n            void main() {\n                vUv = uv;\n                gl_Position = vec4(position, 1.0);\n            }\n        ",
-    fragmentShader: "\n            uniform vec2 resolution;\n            uniform float squareSize;\n            uniform float borderThickness;\n            uniform vec3 borderColor;\n            varying vec2 vUv;\n\n            void main() {\n                // Normalize coordinates to fit the canvas\n                vec2 uv = (vUv - 0.5) * vec2(resolution.y / resolution.y, 1.0); // Maintain aspect ratio\n\n                // Calculate square bounds\n                float halfSize = squareSize / 2.0;  // Half the size of the square\n                float halfThickness = borderThickness / 2.0; // Half thickness for the border\n\n                // Check if the current pixel is within the border area\n                bool insideBorder = (\n                    (uv.x > -halfSize - halfThickness && uv.x < -halfSize + halfThickness && uv.y > -halfSize && uv.y < halfSize) || // Left border\n                    (uv.x > halfSize - halfThickness && uv.x < halfSize + halfThickness && uv.y > -halfSize && uv.y < halfSize) || // Right border\n                    (uv.y > -halfSize - halfThickness && uv.y < -halfSize + halfThickness && uv.x > -halfSize && uv.x < halfSize) || // Bottom border\n                    (uv.y > halfSize - halfThickness && uv.y < halfSize + halfThickness && uv.x > -halfSize && uv.x < halfSize)    // Top border\n                );\n\n                if (insideBorder) {\n                    // Inside the border area: color it with the border color\n                    gl_FragColor = vec4(borderColor, 1.0); // Opaque border color\n                } else {\n                    // Outside the square and border: fully transparent\n                    gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);\n                }\n            }\n        ",
+    vertexShader: "\n        varying vec2 vUv;\n        void main() {\n            vUv = uv;\n            gl_Position = vec4(position, 1.0);\n        }\n    ",
+    fragmentShader: "\n        uniform vec2 resolution;\n        uniform float squareSize;\n        uniform float borderThickness;\n        uniform vec3 borderColor;\n        varying vec2 vUv;\n\n        void main() {\n            // Normalize coordinates to fit the canvas\n            vec2 uv = (vUv - 0.5) * vec2(resolution.x / resolution.y, 1.0); // Maintain aspect ratio\n\n            // Calculate square bounds\n            float halfSize = squareSize / 2.0;  // Half the size of the square\n            float halfThickness = borderThickness / 2.0; // Half thickness for the border\n\n            // Check if the current pixel is within the border area\n            bool insideBorder = (\n                (uv.x > -halfSize - halfThickness && uv.x < -halfSize + halfThickness && uv.y > -halfSize && uv.y < halfSize) || // Left border\n                (uv.x > halfSize - halfThickness && uv.x < halfSize + halfThickness && uv.y > -halfSize && uv.y < halfSize) || // Right border\n                (uv.y > -halfSize - halfThickness && uv.y < -halfSize + halfThickness && uv.x > -halfSize && uv.x < halfSize) || // Bottom border\n                (uv.y > halfSize - halfThickness && uv.y < halfSize + halfThickness && uv.x > -halfSize && uv.x < halfSize)    // Top border\n            );\n\n            if (insideBorder) {\n                // Inside the border area: color it with the border color\n                gl_FragColor = vec4(borderColor, 1.0); // Opaque border color\n            } else {\n                // Outside the square and border: fully transparent\n                gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);\n            }\n        }\n    ",
     transparent: true
   });
   var repere = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh(maskGeometrySquare, maskMaterialSquare);

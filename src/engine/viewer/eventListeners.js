@@ -46,6 +46,7 @@ export function setupEventListeners(viewer) {
     }
 
     repereCheckbox.addEventListener('change', function () {
+        console.log('fuck you');
         const repere = viewer.GetViewer().GetRepere();
         if (repereCheckbox.checked && blackModeCheckbox.checked) {
             repere.visible = true;
