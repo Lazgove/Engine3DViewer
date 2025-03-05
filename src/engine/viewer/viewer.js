@@ -844,9 +844,9 @@ export class Viewer
 
         this.mainObject.traverse((child) => {
             if (child.isMesh && child.name !== '') {
-                if (index < directionVectors.length) {
-                    const direction = directionVectors[index].clone();
-                    const newPosition = initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
+                if (index < this.directionVectors.length) {
+                    const direction = this.directionVectors[index].clone();
+                    const newPosition = this.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
                     gsap.to(child.position, {
                         x: newPosition.x,
                         y: newPosition.y,

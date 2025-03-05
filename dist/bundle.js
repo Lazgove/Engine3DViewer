@@ -103358,6 +103358,7 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "ExplodeModel",
     value: function ExplodeModel(factor) {
+      var _this7 = this;
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.5;
       if (!this.mainObject) {
         console.error("Main object is not defined.");
@@ -103377,9 +103378,9 @@ var Viewer = /*#__PURE__*/function () {
       var index = 0;
       this.mainObject.traverse(function (child) {
         if (child.isMesh && child.name !== '') {
-          if (index < directionVectors.length) {
-            var direction = directionVectors[index].clone();
-            var newPosition = initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
+          if (index < _this7.directionVectors.length) {
+            var direction = _this7.directionVectors[index].clone();
+            var newPosition = _this7.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
             gsap__WEBPACK_IMPORTED_MODULE_12__["default"].to(child.position, {
               x: newPosition.x,
               y: newPosition.y,
