@@ -779,7 +779,7 @@ export class Viewer
         if (this.isAnimating && this.mainModel) {
             const mainObject = this.mainModel.GetMainObject().GetRootObject();
             if (mainObject) {
-                this.UpdateCameraAndControls();
+                //this.UpdateCameraAndControls();
                 mainObject.rotation.y += (this.rotationSpeed * Math.PI / 180) * (1 / 60);
             }
         }

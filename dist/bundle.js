@@ -103312,7 +103312,7 @@ var Viewer = /*#__PURE__*/function () {
       if (this.isAnimating && this.mainModel) {
         var mainObject = this.mainModel.GetMainObject().GetRootObject();
         if (mainObject) {
-          this.UpdateCameraAndControls();
+          //this.UpdateCameraAndControls();
           mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
         }
       }
