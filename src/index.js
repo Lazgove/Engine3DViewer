@@ -1,6 +1,5 @@
 import * as Engine from './engine/main.js';
 import { EmbeddedViewer } from './engine/viewer/embeddedviewer.js';
-import * as THREE from 'three';
 import { setupEventListeners } from './engine/viewer/eventListeners.js';
 
 // Export the Engine and EmbeddedViewer modules
@@ -9,7 +8,7 @@ export { Engine, EmbeddedViewer };
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', () => {
     const viewerContainer = document.getElementById('3d-viewer');
-
+    console.log('dfdfdsf');
     if (!viewerContainer) {
         console.error("Viewer container not found!");
         return;
@@ -38,6 +37,22 @@ document.addEventListener('DOMContentLoaded', () => {
             viewerContainer.viewerInstance.Resize();
         }
     });
+
+    // // Add event listener for file input
+    // const fileInput = document.getElementById('file-input');
+    // fileInput.addEventListener('change', async (event) => {
+    //     console.log('File input changed');
+    //     console.log(event.target.files);
+    //     const files = event.target.files;
+    //     if (files.length > 0) {
+    //         await handleFileUpload(files, viewer);
+    //     }
+    // });
+
+    // async function handleFileUpload(files, viewer) {
+    //     // Assuming the files are model files, you can load them into the viewer
+    //     viewer.LoadModelFromFileList(files);
+    // }
 
     window.cleanAndLoadItem = async function cleanAndLoadItem(selectedItem) {
         if (selectedItem) {
@@ -93,5 +108,4 @@ document.addEventListener('DOMContentLoaded', () => {
             throw error;
         }
     }
-
 });

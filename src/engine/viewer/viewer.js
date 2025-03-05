@@ -516,41 +516,57 @@ export class Viewer
         this.renderer.render (this.scene, this.camera);
     }
 
-    SetMainObject (object)
-    {
-        const shadingType = GetShadingTypeOfObject (object);
-        this.mainModel.SetMainObject (object);
-        this.shadingModel.SetShadingType (shadingType);
-
-        // Store the initial camera view when the object is first loaded
+    SetMainObject(object) {
+        const shadingType = GetShadingTypeOfObject(object);
+        this.mainModel.SetMainObject(object);
+        this.shadingModel.SetShadingType(shadingType);
+    
+        // Store the initial camera view
         this.initialCameraView = this.navigation.GetCamera().Clone();
-
-        // Store initial positions and random directions
+    
+        // Store initial positions and generate evenly spaced direction vectors
         this.initialPositions = [];
         this.directionVectors = [];
-
+    
+        let numChildren = 0;
+        object.traverse((child) => {
+            if (child.isMesh && child.name !== '') {
+                numChildren++;
+            }
+        });
+    
+        // Generate evenly spaced directions using Fibonacci Sphere
+        for (let i = 0; i < numChildren; i++) {
+            const theta = Math.acos(1 - (2 * (i + 0.5)) / numChildren); // Polar angle
+            const phi = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5); // Azimuthal angle
+    
+            const x = Math.sin(theta) * Math.cos(phi);
+            const y = Math.sin(theta) * Math.sin(phi);
+            const z = Math.cos(theta);
+    
+            this.directionVectors.push(new THREE.Vector3(x, y, z).normalize());
+        }
+    
+        let index = 0;
         object.traverse((child) => {
             if (child.isMesh && child.name !== '') {
                 this.initialPositions.push(child.position.clone());
-                const direction = new THREE.Vector3(
-                    Math.random() - 0.5,
-                    Math.random() - 0.5,
-                    Math.random() - 0.5
-                ).normalize();
-                this.directionVectors.push(direction);
+                index++;
             }
         });
-
-        this.isAnimating = true; // Start animating when the model is set
+    
+        this.isAnimating = true;
         this.mainObject = this.mainModel.GetMainObject().GetRootObject();
         this.boundingBox = new THREE.Box3().setFromObject(this.mainObject, true);
         this.centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
         this.size = this.boundingBox.getSize(new THREE.Vector3());
-        // Setup three-point lighting based on the new main object
+    
+        // Setup three-point lighting
         this.SetupThreePointLighting();
-
-        this.Render ();
+    
+        this.Render();
     }
+    
 
     AddExtraObject (object)
     {
@@ -758,7 +774,7 @@ export class Viewer
         if (this.isAnimating && this.mainModel) {
             const mainObject = this.mainModel.GetMainObject().GetRootObject();
             if (mainObject) {
-                //this.UpdateCameraAndControls();
+                this.UpdateCameraAndControls();
                 mainObject.rotation.y += (this.rotationSpeed * Math.PI / 180) * (1 / 60);
             }
         }
@@ -801,51 +817,46 @@ export class Viewer
     }
     
     ExplodeModel(factor, duration = 0.5) {
-        const startTime = performance.now();
-        const endTime = startTime + duration * 1000;
-
-        // Calculate the bounding sphere radius
-        const boundingSphere = new THREE.Sphere();
-        this.boundingBox.getBoundingSphere(boundingSphere);
-        const maxDistance = boundingSphere.radius*1.5;
-
-        // Calculate the user-defined distance based on the factor
-        const userDefinedDistance = (factor / 100) * maxDistance;
-        console.log("factor: " + factor);
-        console.log("boundingSphere.radius: " + boundingSphere.radius);
-        console.log("maxDistance: " + maxDistance);
-        console.log("userDefinedDistance: " + userDefinedDistance);
-
-        const initialPositions = this.initialPositions;
-        const directionVectors = this.directionVectors;
-
-        if (!initialPositions || !directionVectors) {
-            console.error('Initial positions or direction vectors are not defined.');
+        if (!this.mainObject) {
+            console.error("Main object is not defined.");
             return;
         }
-
-        let index = 0;
-
-        this.mainObject.traverse((child) => {
-            if (child.isMesh && child.name !== '') {
-                if (index < directionVectors.length) {
-                    const direction = directionVectors[index].clone();
-                    const newPosition = initialPositions[index].clone().add(direction.multiplyScalar(userDefinedDistance));
-                    gsap.to(child.position, {
-                        x: newPosition.x,
-                        y: newPosition.y,
-                        z: newPosition.z,
-                        duration: duration,
-                        ease: "power2.out",
-                    });
-                    index++;
-                } else {
-                    console.error(`Index ${index} exceeds directionVectors array length`);
-                }
+    
+        // Compute bounding sphere to get maximum explosion distance
+        const boundingSphere = new THREE.Sphere();
+        this.mainObject.geometry.computeBoundingSphere();
+        this.mainObject.geometry.boundingSphere.getBoundingSphere(boundingSphere);
+    
+        const maxExplosionDistance = boundingSphere.radius * 1.5;
+        const explosionDistance = (factor / 100) * maxExplosionDistance;
+    
+        console.log("factor:", factor);
+        console.log("boundingSphere.radius:", boundingSphere.radius);
+        console.log("maxExplosionDistance:", maxExplosionDistance);
+        console.log("explosionDistance:", explosionDistance);
+    
+        if (!this.initialPositions || !this.directionVectors) {
+            console.error("Initial positions or direction vectors are not defined.");
+            return;
+        }
+    
+        this.mainObject.traverse((child, index) => {
+            if (child.isMesh && child.name && this.directionVectors[index]) {
+                const direction = this.directionVectors[index].clone();
+                const newPosition = this.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
+    
+                gsap.to(child.position, {
+                    x: newPosition.x,
+                    y: newPosition.y,
+                    z: newPosition.z,
+                    duration: duration,
+                    ease: "power2.out",
+                });
             }
         });
-    };
-
+    }
+    
+    
     CreateBoundingBoxMesh() {
 
         const centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
