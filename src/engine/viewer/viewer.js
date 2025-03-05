@@ -562,8 +562,8 @@ export class Viewer
         const radius = this.boundingBox.getSize(new THREE.Vector3()).length() / 2;
 
         // Create the bounding sphere
-        this.boundingSphere = new THREE.Sphere(center, radius);
         this.centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
+        this.boundingSphere = new THREE.Sphere(this.centerBbox, radius);
         this.size = this.boundingBox.getSize(new THREE.Vector3());
     
         // Setup three-point lighting
