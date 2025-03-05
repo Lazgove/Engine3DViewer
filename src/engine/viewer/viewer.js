@@ -852,6 +852,8 @@ export class Viewer
                     duration: duration,
                     ease: "power2.out",
                 });
+
+                index ++;
             }
         });
     }

@@ -103385,6 +103385,7 @@ var Viewer = /*#__PURE__*/function () {
             duration: duration,
             ease: "power2.out"
           });
+          index++;
         }
       });
     }
