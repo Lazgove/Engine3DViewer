@@ -103364,7 +103364,8 @@ var Viewer = /*#__PURE__*/function () {
         console.error("Main object is not defined.");
         return;
       }
-      var maxExplosionDistance = this.boundingSphere.radius * 1.5;
+      var logScaleFactor = Math.log10(this.boundingSphereRadius + 1) + 1; // Smooth scaling
+      var maxExplosionDistance = logScaleFactor * this.boundingSphereRadius;
       var explosionDistance = factor / 100 * maxExplosionDistance;
       console.log('hyyyy');
       console.log("factor:", factor);

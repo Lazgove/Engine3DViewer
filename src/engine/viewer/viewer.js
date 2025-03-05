@@ -827,8 +827,10 @@ export class Viewer
             return;
         }
     
-        const maxExplosionDistance = this.boundingSphere.radius * 1.5;
+        const logScaleFactor = Math.log10(this.boundingSphereRadius + 1) + 1; // Smooth scaling
+        const maxExplosionDistance = logScaleFactor * this.boundingSphereRadius;
         const explosionDistance = (factor / 100) * maxExplosionDistance;
+        
         console.log('hyyyy');
         console.log("factor:", factor);
         console.log("boundingSphere.radius:", this.boundingSphere.radius);
