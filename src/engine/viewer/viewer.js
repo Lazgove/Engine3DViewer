@@ -827,10 +827,19 @@ export class Viewer
             return;
         }
 
-        const logScaleFactor = Math.log10(this.boundingSphere.radius + 1) + 1; // Smooth scaling
-        const maxExplosionDistance = logScaleFactor * this.boundingSphere.radius;
-        const explosionDistance = (factor / 100) * maxExplosionDistance;
+        // Define minimum and maximum explosion multipliers
+        const minMultiplier = 0.2;  // Prevents tiny explosions
+        const maxMultiplier = 1.5;  // Prevents excessive explosions
 
+        // Compute max explosion distance and clamp it
+        const maxExplosionDistance = THREE.MathUtils.clamp(
+            this.boundingSphere.radius * 1.5, // Default scaling
+            this.boundingSphere.radius * minMultiplier,
+            this.boundingSphere.radius * maxMultiplier
+        );
+
+        // Scale explosion distance based on slider factor (0 to 100)
+        const explosionDistance = (factor / 100) * maxExplosionDistance;
 
         console.log('hyyyy');
         console.log("factor:", factor);

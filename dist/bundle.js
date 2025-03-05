@@ -103364,8 +103364,17 @@ var Viewer = /*#__PURE__*/function () {
         console.error("Main object is not defined.");
         return;
       }
-      var logScaleFactor = Math.log10(this.boundingSphere.radius + 1) + 1; // Smooth scaling
-      var maxExplosionDistance = logScaleFactor * this.boundingSphere.radius;
+
+      // Define minimum and maximum explosion multipliers
+      var minMultiplier = 0.2; // Prevents tiny explosions
+      var maxMultiplier = 1.5; // Prevents excessive explosions
+
+      // Compute max explosion distance and clamp it
+      var maxExplosionDistance = three__WEBPACK_IMPORTED_MODULE_10__.MathUtils.clamp(this.boundingSphere.radius * 1.5,
+      // Default scaling
+      this.boundingSphere.radius * minMultiplier, this.boundingSphere.radius * maxMultiplier);
+
+      // Scale explosion distance based on slider factor (0 to 100)
       var explosionDistance = factor / 100 * maxExplosionDistance;
       console.log('hyyyy');
       console.log("factor:", factor);
