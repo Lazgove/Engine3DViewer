@@ -185,6 +185,7 @@ export class Viewer
         };
 
         this.mainObject = null;
+        this.boundingSphere = null;
         this.boundingBox = null;
         this.centerBbox = null;
         this.size = null;
@@ -558,6 +559,10 @@ export class Viewer
         this.isAnimating = true;
         this.mainObject = this.mainModel.GetMainObject().GetRootObject();
         this.boundingBox = new THREE.Box3().setFromObject(this.mainObject, true);
+        const radius = this.boundingBox.getSize(new THREE.Vector3()).length() / 2;
+
+        // Create the bounding sphere
+        this.boundingSphere = new THREE.Sphere(center, radius);
         this.centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
         this.size = this.boundingBox.getSize(new THREE.Vector3());
     
@@ -822,16 +827,11 @@ export class Viewer
             return;
         }
     
-        // Compute bounding sphere to get maximum explosion distance
-        const boundingSphere = new THREE.Sphere();
-        this.mainObject.geometry.computeBoundingSphere();
-        this.mainObject.geometry.boundingSphere.getBoundingSphere(boundingSphere);
-    
-        const maxExplosionDistance = boundingSphere.radius * 1.5;
+        const maxExplosionDistance = this.boundingSphere.radius * 1.5;
         const explosionDistance = (factor / 100) * maxExplosionDistance;
     
         console.log("factor:", factor);
-        console.log("boundingSphere.radius:", boundingSphere.radius);
+        console.log("boundingSphere.radius:", this.boundingSphere.radius);
         console.log("maxExplosionDistance:", maxExplosionDistance);
         console.log("explosionDistance:", explosionDistance);
     

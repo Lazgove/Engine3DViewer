@@ -102734,6 +102734,7 @@ var Viewer = /*#__PURE__*/function () {
       animationSteps: 40
     };
     this.mainObject = null;
+    this.boundingSphere = null;
     this.boundingBox = null;
     this.centerBbox = null;
     this.size = null;
@@ -103089,6 +103090,10 @@ var Viewer = /*#__PURE__*/function () {
       this.isAnimating = true;
       this.mainObject = this.mainModel.GetMainObject().GetRootObject();
       this.boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(this.mainObject, true);
+      var radius = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length() / 2;
+
+      // Create the bounding sphere
+      this.boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere(center, radius);
       this.centerBbox = this.boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       this.size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
 
@@ -103359,15 +103364,10 @@ var Viewer = /*#__PURE__*/function () {
         console.error("Main object is not defined.");
         return;
       }
-
-      // Compute bounding sphere to get maximum explosion distance
-      var boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere();
-      this.mainObject.geometry.computeBoundingSphere();
-      this.mainObject.geometry.boundingSphere.getBoundingSphere(boundingSphere);
-      var maxExplosionDistance = boundingSphere.radius * 1.5;
+      var maxExplosionDistance = this.boundingSphere.radius * 1.5;
       var explosionDistance = factor / 100 * maxExplosionDistance;
       console.log("factor:", factor);
-      console.log("boundingSphere.radius:", boundingSphere.radius);
+      console.log("boundingSphere.radius:", this.boundingSphere.radius);
       console.log("maxExplosionDistance:", maxExplosionDistance);
       console.log("explosionDistance:", explosionDistance);
       if (!this.initialPositions || !this.directionVectors) {
