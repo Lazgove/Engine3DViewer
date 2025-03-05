@@ -103358,7 +103358,6 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "ExplodeModel",
     value: function ExplodeModel(factor) {
-      var _this7 = this;
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.5;
       if (!this.mainObject) {
         console.error("Main object is not defined.");
@@ -103366,6 +103365,7 @@ var Viewer = /*#__PURE__*/function () {
       }
       var maxExplosionDistance = this.boundingSphere.radius * 1.5;
       var explosionDistance = factor / 100 * maxExplosionDistance;
+      console.log('hyyyy');
       console.log("factor:", factor);
       console.log("boundingSphere.radius:", this.boundingSphere.radius);
       console.log("maxExplosionDistance:", maxExplosionDistance);
@@ -103374,18 +103374,23 @@ var Viewer = /*#__PURE__*/function () {
         console.error("Initial positions or direction vectors are not defined.");
         return;
       }
-      this.mainObject.traverse(function (child, index) {
-        if (child.isMesh && child.name && _this7.directionVectors[index]) {
-          var direction = _this7.directionVectors[index].clone();
-          var newPosition = _this7.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
-          gsap__WEBPACK_IMPORTED_MODULE_12__["default"].to(child.position, {
-            x: newPosition.x,
-            y: newPosition.y,
-            z: newPosition.z,
-            duration: duration,
-            ease: "power2.out"
-          });
-          index++;
+      var index = 0;
+      this.mainObject.traverse(function (child) {
+        if (child.isMesh && child.name !== '') {
+          if (index < directionVectors.length) {
+            var direction = directionVectors[index].clone();
+            var newPosition = initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
+            gsap__WEBPACK_IMPORTED_MODULE_12__["default"].to(child.position, {
+              x: newPosition.x,
+              y: newPosition.y,
+              z: newPosition.z,
+              duration: duration,
+              ease: "power2.out"
+            });
+            index++;
+          } else {
+            console.error("Index ${index} exceeds directionVectors array length");
+          }
         }
       });
     }

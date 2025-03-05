@@ -829,7 +829,7 @@ export class Viewer
     
         const maxExplosionDistance = this.boundingSphere.radius * 1.5;
         const explosionDistance = (factor / 100) * maxExplosionDistance;
-    
+        console.log('hyyyy');
         console.log("factor:", factor);
         console.log("boundingSphere.radius:", this.boundingSphere.radius);
         console.log("maxExplosionDistance:", maxExplosionDistance);
@@ -840,24 +840,27 @@ export class Viewer
             return;
         }
     
-        this.mainObject.traverse((child, index) => {
-            if (child.isMesh && child.name && this.directionVectors[index]) {
-                const direction = this.directionVectors[index].clone();
-                const newPosition = this.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
-    
-                gsap.to(child.position, {
-                    x: newPosition.x,
-                    y: newPosition.y,
-                    z: newPosition.z,
-                    duration: duration,
-                    ease: "power2.out",
-                });
+        let index = 0;
 
-                index ++;
+        this.mainObject.traverse((child) => {
+            if (child.isMesh && child.name !== '') {
+                if (index < directionVectors.length) {
+                    const direction = directionVectors[index].clone();
+                    const newPosition = initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
+                    gsap.to(child.position, {
+                        x: newPosition.x,
+                        y: newPosition.y,
+                        z: newPosition.z,
+                        duration: duration,
+                        ease: "power2.out",
+                    });
+                    index++;
+                } else {
+                    console.error("Index ${index} exceeds directionVectors array length");
+                }
             }
         });
     }
-    
     
     CreateBoundingBoxMesh() {
 
