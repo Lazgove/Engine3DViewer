@@ -13,7 +13,10 @@ import gsap from 'gsap';
 import * as THREE from 'three';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
-
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 
 export function GetDefaultCamera (direction)
 {
@@ -221,18 +224,18 @@ export class Viewer
         const maxDimension = Math.max(size.x, size.y, size.z);
 
         // Key Light
-        const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 0.5);
         keyLight.position.set(center.x + maxDimension, center.y + maxDimension, center.z + maxDimension);
         keyLight.castShadow = true;
         this.scene.add(keyLight);
 
         // Fill Light
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.2);
         fillLight.position.set(center.x - maxDimension, center.y + maxDimension, center.z + maxDimension);
         this.scene.add(fillLight);
 
         // Back Light (Red)
-        const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.1);
         backLight.position.set(center.x, center.y + maxDimension, center.z - maxDimension);
         this.scene.add(backLight);
     }
@@ -263,6 +266,7 @@ export class Viewer
         this.InitNavigation ();
         this.InitShading ();
         this.InitMasks ();
+        this.InitPostProcessing();
 
         this.Render ();
 
@@ -270,6 +274,9 @@ export class Viewer
         this.animate();
     }
 
+    SetBoudingSphere(boundingSphere) {
+        this.boundingSphere = boundingSphere;
+    }
 
     SetMouseClickHandler (onMouseClick)
     {
@@ -408,17 +415,24 @@ export class Viewer
         this.Render ();
     }
 
-    FitSphereToWindow (boundingSphere, animation)
+    FitSphereToWindow (boundingSphere, animation, duration=0, centered=false)
     {
         if (boundingSphere === null) {
             return;
         }
-        let center = new Coord3D (boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z);
+
+        let center;
+
+        if (!centered) {
+            center = new Coord3D (boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z);
+        } else {
+            center = new Coord3D (0, 0, 0);
+        }
         let radius = boundingSphere.radius;
 
         let newCamera = this.navigation.GetFitToSphereCamera (center, radius);
         this.defaultCameraParameters = newCamera.Clone ();
-        this.navigation.MoveCamera (newCamera, animation ? this.settings.animationSteps : 0);
+        this.navigation.MoveCamera (newCamera, animation ? this.settings.animationSteps : duration);
     }
 
     AdjustClippingPlanes ()
@@ -485,6 +499,23 @@ export class Viewer
         this.Render ();
     }
 
+    InitPostProcessing() {
+        const composer = new EffectComposer(this.renderer);
+        const renderPass = new RenderPass(this.scene, this.camera);
+        composer.addPass(renderPass);
+    
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0;
+        bloomPass.strength = 0.1;
+        bloomPass.radius = 0;
+        composer.addPass(bloomPass);
+    
+        const filmPass = new FilmPass(0.35, 0.025, 648, false);
+        composer.addPass(filmPass);
+    
+        this.composer = composer;
+    }
+
     Render ()
     {
         let navigationCamera = this.navigation.GetCamera ();
@@ -515,6 +546,7 @@ export class Viewer
 
         this.shadingModel.UpdateByCamera (navigationCamera);
         this.renderer.render (this.scene, this.camera);
+        //this.composer.render();
     }
 
     SetMainObject(object) {
@@ -531,7 +563,8 @@ export class Viewer
     
         let numChildren = 0;
         object.traverse((child) => {
-            if (child.isMesh && child.name !== '') {
+            if (child.isMesh) {
+                console.log(child);
                 numChildren++;
             }
         });
@@ -550,25 +583,38 @@ export class Viewer
     
         let index = 0;
         object.traverse((child) => {
-            if (child.isMesh && child.name !== '') {
+            if (child.isMesh) {
                 this.initialPositions.push(child.position.clone());
                 index++;
             }
         });
     
+        // Create a new group and set its position to (0, 0, 0)
+        const boundingBox = new THREE.Box3().setFromObject(object);
+        const center = boundingBox.getCenter(new THREE.Vector3());
+        const group = new THREE.Group();
+        group.position.set(0, 0, 0);
+        this.scene.add(group);
+        group.name = 'mainGroup';
+    
+        // Adjust the position of the mainObject and add it to the group
+        object.position.sub(center);
+        group.add(object);
+    
         this.isAnimating = true;
-        this.mainObject = this.mainModel.GetMainObject().GetRootObject();
-        this.boundingBox = new THREE.Box3().setFromObject(this.mainObject, true);
+        this.mainObject = group;
+        this.boundingBox = boundingBox;
         const radius = this.boundingBox.getSize(new THREE.Vector3()).length() / 2;
-
+    
         // Create the bounding sphere
-        this.centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
+        this.centerBbox = new THREE.Vector3(0, 0, 0);
         this.boundingSphere = new THREE.Sphere(this.centerBbox, radius);
         this.size = this.boundingBox.getSize(new THREE.Vector3());
+        this.navigation.minimumDistanceInit = this.boundingSphere.radius * 2;
     
         // Setup three-point lighting
         this.SetupThreePointLighting();
-    
+        this.CreateBoundingBoxMesh();
         this.Render();
     }
     
@@ -681,10 +727,10 @@ export class Viewer
             }
         });
 
-        // Set the camera movement callback
-        this.navigation.setCameraMoveCallback(() => {
-            this.onCameraMove();
-        });
+        // // Set the camera movement callback
+        // this.navigation.setCameraMoveCallback(() => {
+        //     this.onCameraMove();
+        // });
 
         this.upVector = new UpVector();
     }
@@ -772,24 +818,19 @@ export class Viewer
         this.renderer.dispose ();
     }
 
-    animate()
-    {
+    animate() {
         requestAnimationFrame(this.animate);
-
-        if (this.isAnimating && this.mainModel) {
-            const mainObject = this.mainModel.GetMainObject().GetRootObject();
-            if (mainObject) {
-                //this.UpdateCameraAndControls();
-                mainObject.rotation.y += (this.rotationSpeed * Math.PI / 180) * (1 / 60);
-            }
+    
+        if (this.isAnimating && this.mainObject) {
+            this.mainObject.rotation.y += (this.rotationSpeed * Math.PI / 180) * (1 / 60);
         }
-
+    
         this.GetScene().traverse((child) => {
             if (child.userData.viewCam && child.userData.isAnnotation) {
                 child.lookAt(this.camera.position);
             }
-            });
-            
+        });
+    
         this.Render();
     }
 
@@ -822,30 +863,25 @@ export class Viewer
     }
     
     ExplodeModel(factor, duration = 0.5) {
+        console.log("called");
         if (!this.mainObject) {
             console.error("Main object is not defined.");
             return;
         }
-
+    
         // Define minimum and maximum explosion multipliers
         const minMultiplier = 0.2;  // Prevents tiny explosions
         const maxMultiplier = 1.5;  // Prevents excessive explosions
-
+    
         // Compute max explosion distance and clamp it
         const maxExplosionDistance = THREE.MathUtils.clamp(
             this.boundingSphere.radius * 1.5, // Default scaling
             this.boundingSphere.radius * minMultiplier,
             this.boundingSphere.radius * maxMultiplier
         );
-
+    
         // Scale explosion distance based on slider factor (0 to 100)
         const explosionDistance = (factor / 100) * maxExplosionDistance;
-
-        console.log('hyyyy');
-        console.log("factor:", factor);
-        console.log("boundingSphere.radius:", this.boundingSphere.radius);
-        console.log("maxExplosionDistance:", maxExplosionDistance);
-        console.log("explosionDistance:", explosionDistance);
     
         if (!this.initialPositions || !this.directionVectors) {
             console.error("Initial positions or direction vectors are not defined.");
@@ -853,18 +889,32 @@ export class Viewer
         }
     
         let index = 0;
-
+        let totalMeshes = 0;
+        let completedMeshes = 0;
+    
         this.mainObject.traverse((child) => {
-            if (child.isMesh && child.name !== '') {
+            if (child.isMesh) {
+                totalMeshes++;
+    
                 if (index < this.directionVectors.length) {
                     const direction = this.directionVectors[index].clone();
                     const newPosition = this.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
+    
+                    // Animate each mesh's position with GSAP
                     gsap.to(child.position, {
                         x: newPosition.x,
                         y: newPosition.y,
                         z: newPosition.z,
                         duration: duration,
                         ease: "power2.out",
+                        onComplete: () => {
+                            completedMeshes++;
+                            if (completedMeshes === totalMeshes) {
+                                // All animations are complete, now update the bounding box and zoom limit
+                                console.log("All animations are complete");
+                                this.UpdateCameraAndControls();
+                            }
+                        }
                     });
                     index++;
                 } else {
@@ -872,7 +922,11 @@ export class Viewer
                 }
             }
         });
+    
+        // You can still update the camera before the animations finish, but bounding box recalculation and zoom limit should wait
+        // this.UpdateCameraAndControls(); // This line can be removed if you want to defer the update.
     }
+    
     
     CreateBoundingBoxMesh() {
 
@@ -898,6 +952,7 @@ export class Viewer
     }
 
     CreateBoundingBoxesAndAnnotations() {
+
         const mainObject = this.mainModel.GetMainObject().GetRootObject();
         const boundingBox = new THREE.Box3().setFromObject(mainObject);
         const objectHeight = GetObjectHeight(mainObject);
@@ -1065,9 +1120,6 @@ export class Viewer
                 this.selectedObject.material = this.originalMaterial;
             }
             this.navigation.SetNavigationMode(1);
-            //this.controls.enabled = true;
-            //this.controls.saveState();
-            //this.controls.reset();
         }
     66
         this.selectedObject = null;
@@ -1090,21 +1142,14 @@ export class Viewer
     };
 
     UpdateCameraAndControls() {
-        const distanceScaleFactor = 3;
 
-        // Calculate the bounding sphere from the bounding box
+        // Calculate the bounding box of the main object
+        const boundingBox = new THREE.Box3().setFromObject(this.mainObject, true);
         const boundingSphere = new THREE.Sphere();
-        this.boundingBox.getBoundingSphere(boundingSphere);
-        
-        const minDistance = boundingSphere.radius * distanceScaleFactor;
-        console.log(minDistance);
-        
-        // Set the minimum distance for the camera
-        this.navigation.setMinimumDistance(minDistance);
-        
-        // Call the Zoom method with a ratio of 0 to apply the minimum distance constraint
-        this.navigation.Zoom(0);
-        
-        this.Render();
+        boundingBox.getBoundingSphere(boundingSphere);
+        this.FitSphereToWindow(boundingSphere, false, 30, true);
+        // Update the navigation with the new bounding box
+        //this.navigation.UpdateZoomLimit(boundingSphere);
+        //this.Render();
     }
 }

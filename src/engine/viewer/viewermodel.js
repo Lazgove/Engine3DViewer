@@ -41,13 +41,23 @@ export class ViewerModel
         return this.rootObject === null;
     }
 
-    SetRootObject (rootObject)
-    {
+    SetRootObject(rootObject) {
         if (this.rootObject !== null) {
-            this.Clear ();
+            this.Clear();
         }
         this.rootObject = rootObject;
-        this.scene.add (this.rootObject);
+        this.rootObject.name = "rootObject";
+        this.scene.add(this.rootObject);
+    
+        // Log all children and the number of them
+        let numChildren = 0;
+        this.rootObject.traverse((child) => {
+            if (child.isMesh) {
+                //console.log(child);
+                numChildren++;
+            }
+        });
+        console.log(`Number of children: ${numChildren}`);
     }
 
     GetRootObject ()

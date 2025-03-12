@@ -56,8 +56,6 @@ export class Transformation {
     }
 
     GetTranslation() {
-        console.log("MATRIX");
-        console.log(this.matrix.matrix[12], this.matrix.matrix[13], this.matrix.matrix[14]);
         return new THREE.Vector3(this.matrix.matrix[12], this.matrix.matrix[13], this.matrix.matrix[14]);
     }
 

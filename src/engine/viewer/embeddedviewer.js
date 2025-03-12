@@ -48,7 +48,7 @@ export class EmbeddedViewer
 
         let width = this.parentElement.clientWidth;
         let height = this.parentElement.clientHeight;
-        console.log(width, height);
+        //console.log(width, height);
         this.viewer.Resize (width, height);
 
         if (this.parameters.projectionMode) {
@@ -81,11 +81,11 @@ export class EmbeddedViewer
      * corresponding mtl and texture files, too.
      * @param {string[]} modelUrls Url list of model files.
      */
-    LoadModelFromUrlList (modelUrls)
+    LoadModelFromUrlList (modelUrls, selectedItem = "")
     {
         TransformFileHostUrls (modelUrls);
         let inputFiles = InputFilesFromUrls (modelUrls);
-        this.LoadModelFromInputFiles (inputFiles);
+        this.LoadModelFromInputFiles (inputFiles, selectedItem);
     }
 
     /**
@@ -105,7 +105,7 @@ export class EmbeddedViewer
      * internally, you should use LoadModelFromUrlList or LoadModelFromFileList instead.
      * @param {InputFile[]} inputFiles List of model files.
      */
-    LoadModelFromInputFiles (inputFiles)
+    LoadModelFromInputFiles (inputFiles, selectedItem)
     {
         if (inputFiles === null || inputFiles.length === 0) {
             return;
@@ -140,28 +140,38 @@ export class EmbeddedViewer
                 progressDiv.innerHTML = Loc ('Visualizing model...');
             },
             onModelFinished : (importResult, threeObject) => {
-                this.parentElement.removeChild (progressDiv);
+                this.parentElement.removeChild(progressDiv);
                 threeObject.name = "rootScene";
                 
+                // Rename direct children with the name matching selectedItem
+                threeObject.children.forEach((child) => {
+                    if (child.isObject3D) {
+                        console.log(child);
+                        child.name = selectedItem;
+                    }
+                });
+
                 this.canvas.style.display = 'inherit';
-                this.viewer.SetMainObject (threeObject);
-                let boundingSphere = this.viewer.GetBoundingSphere ((meshUserData) => {
+                // Set the main object and the minimum distance of the camera
+                this.viewer.SetMainObject(threeObject);
+                let boundingSphere = this.viewer.GetBoundingSphere((meshUserData) => {
                     return true;
                 });
-                this.viewer.AdjustClippingPlanesToSphere (boundingSphere);
+                this.viewer.SetBoudingSphere(boundingSphere);
+                this.viewer.AdjustClippingPlanesToSphere(boundingSphere);
                 if (this.parameters.camera) {
-                    this.viewer.SetCamera (this.parameters.camera);
+                    console.log(this.parameters.camera);   
+                    this.viewer.SetCamera(this.parameters.camera);
                 } else {
-                    this.viewer.SetUpVector (Direction.Y, false);
-                    this.viewer.FitSphereToWindow (boundingSphere, false);
+                    this.viewer.SetUpVector(Direction.Y, false);
+                    // Place the initial camera to the bounding sphere
+                    this.viewer.FitSphereToWindow(boundingSphere, false);
                 }
 
                 this.model = importResult.model;
                 if (this.parameters.onModelLoaded) {
-                    this.parameters.onModelLoaded ();
+                    this.parameters.onModelLoaded();
                 }
-                this.viewer.CreateBoundingBoxMesh();
-                this.viewer.CreateBoundingBoxesAndAnnotations();
             },
             onTextureLoaded : () => {
                 this.viewer.Render ();

@@ -38,27 +38,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // // Add event listener for file input
-    // const fileInput = document.getElementById('file-input');
-    // fileInput.addEventListener('change', async (event) => {
-    //     console.log('File input changed');
-    //     console.log(event.target.files);
-    //     const files = event.target.files;
-    //     if (files.length > 0) {
-    //         await handleFileUpload(files, viewer);
-    //     }
-    // });
+    // Add event listener for file input
+    const fileInput = document.getElementById('file-input');
+    fileInput.addEventListener('change', async (event) => {
+        console.log('File input changed');
+        const files = event.target.files;
+        if (files.length > 0) {
+            await handleFileUpload(files, viewer);
+        }
+    });
 
-    // async function handleFileUpload(files, viewer) {
-    //     // Assuming the files are model files, you can load them into the viewer
-    //     viewer.LoadModelFromFileList(files);
-    // }
+    async function handleFileUpload(files, viewer) {
+        // Assuming the files are model files, you can load them into the viewer
+        viewer.LoadModelFromFileList(files, "testItem");
+    }
 
     window.cleanAndLoadItem = async function cleanAndLoadItem(selectedItem) {
         if (selectedItem) {
             const files = await fetchDynamoData(false, selectedItem);
             const fileData = files[0];
-            console.log(fileData);
+            //console.log(fileData);
 
             // Create the modelUrls array
             const modelUrls = [];
@@ -73,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Load the model using the modelUrls array
-            viewerContainer.viewerInstance.LoadModelFromUrlList(modelUrls);
+            viewerContainer.viewerInstance.LoadModelFromUrlList(modelUrls, selectedItem);
         }
     };
 

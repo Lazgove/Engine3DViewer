@@ -46,7 +46,6 @@ export function setupEventListeners(viewer) {
     }
 
     repereCheckbox.addEventListener('change', function () {
-        console.log('fuck you');
         const repere = viewer.GetViewer().GetRepere();
         if (repereCheckbox.checked && blackModeCheckbox.checked) {
             repere.visible = true;
@@ -94,6 +93,7 @@ export function setupEventListeners(viewer) {
         const scene = viewer.GetViewer().GetScene();
         scene.traverse((child) => {
             if (child.userData.isAnnotation) {
+                console.log("cihiuheuihfuiehuifr");
                 if (cotationCheckbox.checked) {
                     child.visible = true;
                 } else {

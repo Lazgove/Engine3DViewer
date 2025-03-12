@@ -86074,6 +86074,1387 @@ const TEXTURE_TYPE = {
 
 /***/ }),
 
+/***/ "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js":
+/*!**************************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/postprocessing/EffectComposer.js ***!
+  \**************************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   EffectComposer: () => (/* binding */ EffectComposer)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+/* harmony import */ var _shaders_CopyShader_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../shaders/CopyShader.js */ "./node_modules/three/examples/jsm/shaders/CopyShader.js");
+/* harmony import */ var _ShaderPass_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./ShaderPass.js */ "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js");
+/* harmony import */ var _MaskPass_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./MaskPass.js */ "./node_modules/three/examples/jsm/postprocessing/MaskPass.js");
+
+
+
+
+
+class EffectComposer {
+
+	constructor( renderer, renderTarget ) {
+
+		this.renderer = renderer;
+
+		this._pixelRatio = renderer.getPixelRatio();
+
+		if ( renderTarget === undefined ) {
+
+			const size = renderer.getSize( new three__WEBPACK_IMPORTED_MODULE_0__.Vector2() );
+			this._width = size.width;
+			this._height = size.height;
+
+			renderTarget = new three__WEBPACK_IMPORTED_MODULE_0__.WebGLRenderTarget( this._width * this._pixelRatio, this._height * this._pixelRatio, { type: three__WEBPACK_IMPORTED_MODULE_0__.HalfFloatType } );
+			renderTarget.texture.name = 'EffectComposer.rt1';
+
+		} else {
+
+			this._width = renderTarget.width;
+			this._height = renderTarget.height;
+
+		}
+
+		this.renderTarget1 = renderTarget;
+		this.renderTarget2 = renderTarget.clone();
+		this.renderTarget2.texture.name = 'EffectComposer.rt2';
+
+		this.writeBuffer = this.renderTarget1;
+		this.readBuffer = this.renderTarget2;
+
+		this.renderToScreen = true;
+
+		this.passes = [];
+
+		this.copyPass = new _ShaderPass_js__WEBPACK_IMPORTED_MODULE_1__.ShaderPass( _shaders_CopyShader_js__WEBPACK_IMPORTED_MODULE_2__.CopyShader );
+		this.copyPass.material.blending = three__WEBPACK_IMPORTED_MODULE_0__.NoBlending;
+
+		this.clock = new three__WEBPACK_IMPORTED_MODULE_0__.Clock();
+
+	}
+
+	swapBuffers() {
+
+		const tmp = this.readBuffer;
+		this.readBuffer = this.writeBuffer;
+		this.writeBuffer = tmp;
+
+	}
+
+	addPass( pass ) {
+
+		this.passes.push( pass );
+		pass.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+	}
+
+	insertPass( pass, index ) {
+
+		this.passes.splice( index, 0, pass );
+		pass.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+	}
+
+	removePass( pass ) {
+
+		const index = this.passes.indexOf( pass );
+
+		if ( index !== - 1 ) {
+
+			this.passes.splice( index, 1 );
+
+		}
+
+	}
+
+	isLastEnabledPass( passIndex ) {
+
+		for ( let i = passIndex + 1; i < this.passes.length; i ++ ) {
+
+			if ( this.passes[ i ].enabled ) {
+
+				return false;
+
+			}
+
+		}
+
+		return true;
+
+	}
+
+	render( deltaTime ) {
+
+		// deltaTime value is in seconds
+
+		if ( deltaTime === undefined ) {
+
+			deltaTime = this.clock.getDelta();
+
+		}
+
+		const currentRenderTarget = this.renderer.getRenderTarget();
+
+		let maskActive = false;
+
+		for ( let i = 0, il = this.passes.length; i < il; i ++ ) {
+
+			const pass = this.passes[ i ];
+
+			if ( pass.enabled === false ) continue;
+
+			pass.renderToScreen = ( this.renderToScreen && this.isLastEnabledPass( i ) );
+			pass.render( this.renderer, this.writeBuffer, this.readBuffer, deltaTime, maskActive );
+
+			if ( pass.needsSwap ) {
+
+				if ( maskActive ) {
+
+					const context = this.renderer.getContext();
+					const stencil = this.renderer.state.buffers.stencil;
+
+					//context.stencilFunc( context.NOTEQUAL, 1, 0xffffffff );
+					stencil.setFunc( context.NOTEQUAL, 1, 0xffffffff );
+
+					this.copyPass.render( this.renderer, this.writeBuffer, this.readBuffer, deltaTime );
+
+					//context.stencilFunc( context.EQUAL, 1, 0xffffffff );
+					stencil.setFunc( context.EQUAL, 1, 0xffffffff );
+
+				}
+
+				this.swapBuffers();
+
+			}
+
+			if ( _MaskPass_js__WEBPACK_IMPORTED_MODULE_3__.MaskPass !== undefined ) {
+
+				if ( pass instanceof _MaskPass_js__WEBPACK_IMPORTED_MODULE_3__.MaskPass ) {
+
+					maskActive = true;
+
+				} else if ( pass instanceof _MaskPass_js__WEBPACK_IMPORTED_MODULE_3__.ClearMaskPass ) {
+
+					maskActive = false;
+
+				}
+
+			}
+
+		}
+
+		this.renderer.setRenderTarget( currentRenderTarget );
+
+	}
+
+	reset( renderTarget ) {
+
+		if ( renderTarget === undefined ) {
+
+			const size = this.renderer.getSize( new three__WEBPACK_IMPORTED_MODULE_0__.Vector2() );
+			this._pixelRatio = this.renderer.getPixelRatio();
+			this._width = size.width;
+			this._height = size.height;
+
+			renderTarget = this.renderTarget1.clone();
+			renderTarget.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+		}
+
+		this.renderTarget1.dispose();
+		this.renderTarget2.dispose();
+		this.renderTarget1 = renderTarget;
+		this.renderTarget2 = renderTarget.clone();
+
+		this.writeBuffer = this.renderTarget1;
+		this.readBuffer = this.renderTarget2;
+
+	}
+
+	setSize( width, height ) {
+
+		this._width = width;
+		this._height = height;
+
+		const effectiveWidth = this._width * this._pixelRatio;
+		const effectiveHeight = this._height * this._pixelRatio;
+
+		this.renderTarget1.setSize( effectiveWidth, effectiveHeight );
+		this.renderTarget2.setSize( effectiveWidth, effectiveHeight );
+
+		for ( let i = 0; i < this.passes.length; i ++ ) {
+
+			this.passes[ i ].setSize( effectiveWidth, effectiveHeight );
+
+		}
+
+	}
+
+	setPixelRatio( pixelRatio ) {
+
+		this._pixelRatio = pixelRatio;
+
+		this.setSize( this._width, this._height );
+
+	}
+
+	dispose() {
+
+		this.renderTarget1.dispose();
+		this.renderTarget2.dispose();
+
+		this.copyPass.dispose();
+
+	}
+
+}
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/postprocessing/FilmPass.js":
+/*!********************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/postprocessing/FilmPass.js ***!
+  \********************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   FilmPass: () => (/* binding */ FilmPass)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+/* harmony import */ var _Pass_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Pass.js */ "./node_modules/three/examples/jsm/postprocessing/Pass.js");
+/* harmony import */ var _shaders_FilmShader_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../shaders/FilmShader.js */ "./node_modules/three/examples/jsm/shaders/FilmShader.js");
+
+
+
+
+class FilmPass extends _Pass_js__WEBPACK_IMPORTED_MODULE_0__.Pass {
+
+	constructor( intensity = 0.5, grayscale = false ) {
+
+		super();
+
+		const shader = _shaders_FilmShader_js__WEBPACK_IMPORTED_MODULE_1__.FilmShader;
+
+		this.uniforms = three__WEBPACK_IMPORTED_MODULE_2__.UniformsUtils.clone( shader.uniforms );
+
+		this.material = new three__WEBPACK_IMPORTED_MODULE_2__.ShaderMaterial( {
+
+			name: shader.name,
+			uniforms: this.uniforms,
+			vertexShader: shader.vertexShader,
+			fragmentShader: shader.fragmentShader
+
+		} );
+
+		this.uniforms.intensity.value = intensity; // (0 = no effect, 1 = full effect)
+		this.uniforms.grayscale.value = grayscale;
+
+		this.fsQuad = new _Pass_js__WEBPACK_IMPORTED_MODULE_0__.FullScreenQuad( this.material );
+
+	}
+
+	render( renderer, writeBuffer, readBuffer, deltaTime /*, maskActive */ ) {
+
+		this.uniforms[ 'tDiffuse' ].value = readBuffer.texture;
+		this.uniforms[ 'time' ].value += deltaTime;
+
+		if ( this.renderToScreen ) {
+
+			renderer.setRenderTarget( null );
+			this.fsQuad.render( renderer );
+
+		} else {
+
+			renderer.setRenderTarget( writeBuffer );
+			if ( this.clear ) renderer.clear();
+			this.fsQuad.render( renderer );
+
+		}
+
+	}
+
+	dispose() {
+
+		this.material.dispose();
+
+		this.fsQuad.dispose();
+
+	}
+
+}
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/postprocessing/MaskPass.js":
+/*!********************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/postprocessing/MaskPass.js ***!
+  \********************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   ClearMaskPass: () => (/* binding */ ClearMaskPass),
+/* harmony export */   MaskPass: () => (/* binding */ MaskPass)
+/* harmony export */ });
+/* harmony import */ var _Pass_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Pass.js */ "./node_modules/three/examples/jsm/postprocessing/Pass.js");
+
+
+class MaskPass extends _Pass_js__WEBPACK_IMPORTED_MODULE_0__.Pass {
+
+	constructor( scene, camera ) {
+
+		super();
+
+		this.scene = scene;
+		this.camera = camera;
+
+		this.clear = true;
+		this.needsSwap = false;
+
+		this.inverse = false;
+
+	}
+
+	render( renderer, writeBuffer, readBuffer /*, deltaTime, maskActive */ ) {
+
+		const context = renderer.getContext();
+		const state = renderer.state;
+
+		// don't update color or depth
+
+		state.buffers.color.setMask( false );
+		state.buffers.depth.setMask( false );
+
+		// lock buffers
+
+		state.buffers.color.setLocked( true );
+		state.buffers.depth.setLocked( true );
+
+		// set up stencil
+
+		let writeValue, clearValue;
+
+		if ( this.inverse ) {
+
+			writeValue = 0;
+			clearValue = 1;
+
+		} else {
+
+			writeValue = 1;
+			clearValue = 0;
+
+		}
+
+		state.buffers.stencil.setTest( true );
+		state.buffers.stencil.setOp( context.REPLACE, context.REPLACE, context.REPLACE );
+		state.buffers.stencil.setFunc( context.ALWAYS, writeValue, 0xffffffff );
+		state.buffers.stencil.setClear( clearValue );
+		state.buffers.stencil.setLocked( true );
+
+		// draw into the stencil buffer
+
+		renderer.setRenderTarget( readBuffer );
+		if ( this.clear ) renderer.clear();
+		renderer.render( this.scene, this.camera );
+
+		renderer.setRenderTarget( writeBuffer );
+		if ( this.clear ) renderer.clear();
+		renderer.render( this.scene, this.camera );
+
+		// unlock color and depth buffer and make them writable for subsequent rendering/clearing
+
+		state.buffers.color.setLocked( false );
+		state.buffers.depth.setLocked( false );
+
+		state.buffers.color.setMask( true );
+		state.buffers.depth.setMask( true );
+
+		// only render where stencil is set to 1
+
+		state.buffers.stencil.setLocked( false );
+		state.buffers.stencil.setFunc( context.EQUAL, 1, 0xffffffff ); // draw if == 1
+		state.buffers.stencil.setOp( context.KEEP, context.KEEP, context.KEEP );
+		state.buffers.stencil.setLocked( true );
+
+	}
+
+}
+
+class ClearMaskPass extends _Pass_js__WEBPACK_IMPORTED_MODULE_0__.Pass {
+
+	constructor() {
+
+		super();
+
+		this.needsSwap = false;
+
+	}
+
+	render( renderer /*, writeBuffer, readBuffer, deltaTime, maskActive */ ) {
+
+		renderer.state.buffers.stencil.setLocked( false );
+		renderer.state.buffers.stencil.setTest( false );
+
+	}
+
+}
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/postprocessing/Pass.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/postprocessing/Pass.js ***!
+  \****************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   FullScreenQuad: () => (/* binding */ FullScreenQuad),
+/* harmony export */   Pass: () => (/* binding */ Pass)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+
+
+class Pass {
+
+	constructor() {
+
+		this.isPass = true;
+
+		// if set to true, the pass is processed by the composer
+		this.enabled = true;
+
+		// if set to true, the pass indicates to swap read and write buffer after rendering
+		this.needsSwap = true;
+
+		// if set to true, the pass clears its buffer before rendering
+		this.clear = false;
+
+		// if set to true, the result of the pass is rendered to screen. This is set automatically by EffectComposer.
+		this.renderToScreen = false;
+
+	}
+
+	setSize( /* width, height */ ) {}
+
+	render( /* renderer, writeBuffer, readBuffer, deltaTime, maskActive */ ) {
+
+		console.error( 'THREE.Pass: .render() must be implemented in derived pass.' );
+
+	}
+
+	dispose() {}
+
+}
+
+// Helper for passes that need to fill the viewport with a single quad.
+
+const _camera = new three__WEBPACK_IMPORTED_MODULE_0__.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+
+// https://github.com/mrdoob/three.js/pull/21358
+
+class FullscreenTriangleGeometry extends three__WEBPACK_IMPORTED_MODULE_0__.BufferGeometry {
+
+	constructor() {
+
+		super();
+
+		this.setAttribute( 'position', new three__WEBPACK_IMPORTED_MODULE_0__.Float32BufferAttribute( [ - 1, 3, 0, - 1, - 1, 0, 3, - 1, 0 ], 3 ) );
+		this.setAttribute( 'uv', new three__WEBPACK_IMPORTED_MODULE_0__.Float32BufferAttribute( [ 0, 2, 0, 0, 2, 0 ], 2 ) );
+
+	}
+
+}
+
+const _geometry = new FullscreenTriangleGeometry();
+
+class FullScreenQuad {
+
+	constructor( material ) {
+
+		this._mesh = new three__WEBPACK_IMPORTED_MODULE_0__.Mesh( _geometry, material );
+
+	}
+
+	dispose() {
+
+		this._mesh.geometry.dispose();
+
+	}
+
+	render( renderer ) {
+
+		renderer.render( this._mesh, _camera );
+
+	}
+
+	get material() {
+
+		return this._mesh.material;
+
+	}
+
+	set material( value ) {
+
+		this._mesh.material = value;
+
+	}
+
+}
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/postprocessing/RenderPass.js":
+/*!**********************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/postprocessing/RenderPass.js ***!
+  \**********************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   RenderPass: () => (/* binding */ RenderPass)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+/* harmony import */ var _Pass_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Pass.js */ "./node_modules/three/examples/jsm/postprocessing/Pass.js");
+
+
+
+class RenderPass extends _Pass_js__WEBPACK_IMPORTED_MODULE_0__.Pass {
+
+	constructor( scene, camera, overrideMaterial = null, clearColor = null, clearAlpha = null ) {
+
+		super();
+
+		this.scene = scene;
+		this.camera = camera;
+
+		this.overrideMaterial = overrideMaterial;
+
+		this.clearColor = clearColor;
+		this.clearAlpha = clearAlpha;
+
+		this.clear = true;
+		this.clearDepth = false;
+		this.needsSwap = false;
+		this._oldClearColor = new three__WEBPACK_IMPORTED_MODULE_1__.Color();
+
+	}
+
+	render( renderer, writeBuffer, readBuffer /*, deltaTime, maskActive */ ) {
+
+		const oldAutoClear = renderer.autoClear;
+		renderer.autoClear = false;
+
+		let oldClearAlpha, oldOverrideMaterial;
+
+		if ( this.overrideMaterial !== null ) {
+
+			oldOverrideMaterial = this.scene.overrideMaterial;
+
+			this.scene.overrideMaterial = this.overrideMaterial;
+
+		}
+
+		if ( this.clearColor !== null ) {
+
+			renderer.getClearColor( this._oldClearColor );
+			renderer.setClearColor( this.clearColor, renderer.getClearAlpha() );
+
+		}
+
+		if ( this.clearAlpha !== null ) {
+
+			oldClearAlpha = renderer.getClearAlpha();
+			renderer.setClearAlpha( this.clearAlpha );
+
+		}
+
+		if ( this.clearDepth == true ) {
+
+			renderer.clearDepth();
+
+		}
+
+		renderer.setRenderTarget( this.renderToScreen ? null : readBuffer );
+
+		if ( this.clear === true ) {
+
+			// TODO: Avoid using autoClear properties, see https://github.com/mrdoob/three.js/pull/15571#issuecomment-465669600
+			renderer.clear( renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil );
+
+		}
+
+		renderer.render( this.scene, this.camera );
+
+		// restore
+
+		if ( this.clearColor !== null ) {
+
+			renderer.setClearColor( this._oldClearColor );
+
+		}
+
+		if ( this.clearAlpha !== null ) {
+
+			renderer.setClearAlpha( oldClearAlpha );
+
+		}
+
+		if ( this.overrideMaterial !== null ) {
+
+			this.scene.overrideMaterial = oldOverrideMaterial;
+
+		}
+
+		renderer.autoClear = oldAutoClear;
+
+	}
+
+}
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/postprocessing/ShaderPass.js":
+/*!**********************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/postprocessing/ShaderPass.js ***!
+  \**********************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   ShaderPass: () => (/* binding */ ShaderPass)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+/* harmony import */ var _Pass_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Pass.js */ "./node_modules/three/examples/jsm/postprocessing/Pass.js");
+
+
+
+class ShaderPass extends _Pass_js__WEBPACK_IMPORTED_MODULE_0__.Pass {
+
+	constructor( shader, textureID ) {
+
+		super();
+
+		this.textureID = ( textureID !== undefined ) ? textureID : 'tDiffuse';
+
+		if ( shader instanceof three__WEBPACK_IMPORTED_MODULE_1__.ShaderMaterial ) {
+
+			this.uniforms = shader.uniforms;
+
+			this.material = shader;
+
+		} else if ( shader ) {
+
+			this.uniforms = three__WEBPACK_IMPORTED_MODULE_1__.UniformsUtils.clone( shader.uniforms );
+
+			this.material = new three__WEBPACK_IMPORTED_MODULE_1__.ShaderMaterial( {
+
+				name: ( shader.name !== undefined ) ? shader.name : 'unspecified',
+				defines: Object.assign( {}, shader.defines ),
+				uniforms: this.uniforms,
+				vertexShader: shader.vertexShader,
+				fragmentShader: shader.fragmentShader
+
+			} );
+
+		}
+
+		this.fsQuad = new _Pass_js__WEBPACK_IMPORTED_MODULE_0__.FullScreenQuad( this.material );
+
+	}
+
+	render( renderer, writeBuffer, readBuffer /*, deltaTime, maskActive */ ) {
+
+		if ( this.uniforms[ this.textureID ] ) {
+
+			this.uniforms[ this.textureID ].value = readBuffer.texture;
+
+		}
+
+		this.fsQuad.material = this.material;
+
+		if ( this.renderToScreen ) {
+
+			renderer.setRenderTarget( null );
+			this.fsQuad.render( renderer );
+
+		} else {
+
+			renderer.setRenderTarget( writeBuffer );
+			// TODO: Avoid using autoClear properties, see https://github.com/mrdoob/three.js/pull/15571#issuecomment-465669600
+			if ( this.clear ) renderer.clear( renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil );
+			this.fsQuad.render( renderer );
+
+		}
+
+	}
+
+	dispose() {
+
+		this.material.dispose();
+
+		this.fsQuad.dispose();
+
+	}
+
+}
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js":
+/*!***************************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js ***!
+  \***************************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   UnrealBloomPass: () => (/* binding */ UnrealBloomPass)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+/* harmony import */ var _Pass_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Pass.js */ "./node_modules/three/examples/jsm/postprocessing/Pass.js");
+/* harmony import */ var _shaders_CopyShader_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../shaders/CopyShader.js */ "./node_modules/three/examples/jsm/shaders/CopyShader.js");
+/* harmony import */ var _shaders_LuminosityHighPassShader_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../shaders/LuminosityHighPassShader.js */ "./node_modules/three/examples/jsm/shaders/LuminosityHighPassShader.js");
+
+
+
+
+
+/**
+ * UnrealBloomPass is inspired by the bloom pass of Unreal Engine. It creates a
+ * mip map chain of bloom textures and blurs them with different radii. Because
+ * of the weighted combination of mips, and because larger blurs are done on
+ * higher mips, this effect provides good quality and performance.
+ *
+ * Reference:
+ * - https://docs.unrealengine.com/latest/INT/Engine/Rendering/PostProcessEffects/Bloom/
+ */
+class UnrealBloomPass extends _Pass_js__WEBPACK_IMPORTED_MODULE_0__.Pass {
+
+	constructor( resolution, strength, radius, threshold ) {
+
+		super();
+
+		this.strength = ( strength !== undefined ) ? strength : 1;
+		this.radius = radius;
+		this.threshold = threshold;
+		this.resolution = ( resolution !== undefined ) ? new three__WEBPACK_IMPORTED_MODULE_1__.Vector2( resolution.x, resolution.y ) : new three__WEBPACK_IMPORTED_MODULE_1__.Vector2( 256, 256 );
+
+		// create color only once here, reuse it later inside the render function
+		this.clearColor = new three__WEBPACK_IMPORTED_MODULE_1__.Color( 0, 0, 0 );
+
+		// render targets
+		this.renderTargetsHorizontal = [];
+		this.renderTargetsVertical = [];
+		this.nMips = 5;
+		let resx = Math.round( this.resolution.x / 2 );
+		let resy = Math.round( this.resolution.y / 2 );
+
+		this.renderTargetBright = new three__WEBPACK_IMPORTED_MODULE_1__.WebGLRenderTarget( resx, resy, { type: three__WEBPACK_IMPORTED_MODULE_1__.HalfFloatType } );
+		this.renderTargetBright.texture.name = 'UnrealBloomPass.bright';
+		this.renderTargetBright.texture.generateMipmaps = false;
+
+		for ( let i = 0; i < this.nMips; i ++ ) {
+
+			const renderTargetHorizontal = new three__WEBPACK_IMPORTED_MODULE_1__.WebGLRenderTarget( resx, resy, { type: three__WEBPACK_IMPORTED_MODULE_1__.HalfFloatType } );
+
+			renderTargetHorizontal.texture.name = 'UnrealBloomPass.h' + i;
+			renderTargetHorizontal.texture.generateMipmaps = false;
+
+			this.renderTargetsHorizontal.push( renderTargetHorizontal );
+
+			const renderTargetVertical = new three__WEBPACK_IMPORTED_MODULE_1__.WebGLRenderTarget( resx, resy, { type: three__WEBPACK_IMPORTED_MODULE_1__.HalfFloatType } );
+
+			renderTargetVertical.texture.name = 'UnrealBloomPass.v' + i;
+			renderTargetVertical.texture.generateMipmaps = false;
+
+			this.renderTargetsVertical.push( renderTargetVertical );
+
+			resx = Math.round( resx / 2 );
+
+			resy = Math.round( resy / 2 );
+
+		}
+
+		// luminosity high pass material
+
+		const highPassShader = _shaders_LuminosityHighPassShader_js__WEBPACK_IMPORTED_MODULE_2__.LuminosityHighPassShader;
+		this.highPassUniforms = three__WEBPACK_IMPORTED_MODULE_1__.UniformsUtils.clone( highPassShader.uniforms );
+
+		this.highPassUniforms[ 'luminosityThreshold' ].value = threshold;
+		this.highPassUniforms[ 'smoothWidth' ].value = 0.01;
+
+		this.materialHighPassFilter = new three__WEBPACK_IMPORTED_MODULE_1__.ShaderMaterial( {
+			uniforms: this.highPassUniforms,
+			vertexShader: highPassShader.vertexShader,
+			fragmentShader: highPassShader.fragmentShader
+		} );
+
+		// gaussian blur materials
+
+		this.separableBlurMaterials = [];
+		const kernelSizeArray = [ 3, 5, 7, 9, 11 ];
+		resx = Math.round( this.resolution.x / 2 );
+		resy = Math.round( this.resolution.y / 2 );
+
+		for ( let i = 0; i < this.nMips; i ++ ) {
+
+			this.separableBlurMaterials.push( this.getSeparableBlurMaterial( kernelSizeArray[ i ] ) );
+
+			this.separableBlurMaterials[ i ].uniforms[ 'invSize' ].value = new three__WEBPACK_IMPORTED_MODULE_1__.Vector2( 1 / resx, 1 / resy );
+
+			resx = Math.round( resx / 2 );
+
+			resy = Math.round( resy / 2 );
+
+		}
+
+		// composite material
+
+		this.compositeMaterial = this.getCompositeMaterial( this.nMips );
+		this.compositeMaterial.uniforms[ 'blurTexture1' ].value = this.renderTargetsVertical[ 0 ].texture;
+		this.compositeMaterial.uniforms[ 'blurTexture2' ].value = this.renderTargetsVertical[ 1 ].texture;
+		this.compositeMaterial.uniforms[ 'blurTexture3' ].value = this.renderTargetsVertical[ 2 ].texture;
+		this.compositeMaterial.uniforms[ 'blurTexture4' ].value = this.renderTargetsVertical[ 3 ].texture;
+		this.compositeMaterial.uniforms[ 'blurTexture5' ].value = this.renderTargetsVertical[ 4 ].texture;
+		this.compositeMaterial.uniforms[ 'bloomStrength' ].value = strength;
+		this.compositeMaterial.uniforms[ 'bloomRadius' ].value = 0.1;
+
+		const bloomFactors = [ 1.0, 0.8, 0.6, 0.4, 0.2 ];
+		this.compositeMaterial.uniforms[ 'bloomFactors' ].value = bloomFactors;
+		this.bloomTintColors = [ new three__WEBPACK_IMPORTED_MODULE_1__.Vector3( 1, 1, 1 ), new three__WEBPACK_IMPORTED_MODULE_1__.Vector3( 1, 1, 1 ), new three__WEBPACK_IMPORTED_MODULE_1__.Vector3( 1, 1, 1 ), new three__WEBPACK_IMPORTED_MODULE_1__.Vector3( 1, 1, 1 ), new three__WEBPACK_IMPORTED_MODULE_1__.Vector3( 1, 1, 1 ) ];
+		this.compositeMaterial.uniforms[ 'bloomTintColors' ].value = this.bloomTintColors;
+
+		// blend material
+
+		const copyShader = _shaders_CopyShader_js__WEBPACK_IMPORTED_MODULE_3__.CopyShader;
+
+		this.copyUniforms = three__WEBPACK_IMPORTED_MODULE_1__.UniformsUtils.clone( copyShader.uniforms );
+
+		this.blendMaterial = new three__WEBPACK_IMPORTED_MODULE_1__.ShaderMaterial( {
+			uniforms: this.copyUniforms,
+			vertexShader: copyShader.vertexShader,
+			fragmentShader: copyShader.fragmentShader,
+			blending: three__WEBPACK_IMPORTED_MODULE_1__.AdditiveBlending,
+			depthTest: false,
+			depthWrite: false,
+			transparent: true
+		} );
+
+		this.enabled = true;
+		this.needsSwap = false;
+
+		this._oldClearColor = new three__WEBPACK_IMPORTED_MODULE_1__.Color();
+		this.oldClearAlpha = 1;
+
+		this.basic = new three__WEBPACK_IMPORTED_MODULE_1__.MeshBasicMaterial();
+
+		this.fsQuad = new _Pass_js__WEBPACK_IMPORTED_MODULE_0__.FullScreenQuad( null );
+
+	}
+
+	dispose() {
+
+		for ( let i = 0; i < this.renderTargetsHorizontal.length; i ++ ) {
+
+			this.renderTargetsHorizontal[ i ].dispose();
+
+		}
+
+		for ( let i = 0; i < this.renderTargetsVertical.length; i ++ ) {
+
+			this.renderTargetsVertical[ i ].dispose();
+
+		}
+
+		this.renderTargetBright.dispose();
+
+		//
+
+		for ( let i = 0; i < this.separableBlurMaterials.length; i ++ ) {
+
+			this.separableBlurMaterials[ i ].dispose();
+
+		}
+
+		this.compositeMaterial.dispose();
+		this.blendMaterial.dispose();
+		this.basic.dispose();
+
+		//
+
+		this.fsQuad.dispose();
+
+	}
+
+	setSize( width, height ) {
+
+		let resx = Math.round( width / 2 );
+		let resy = Math.round( height / 2 );
+
+		this.renderTargetBright.setSize( resx, resy );
+
+		for ( let i = 0; i < this.nMips; i ++ ) {
+
+			this.renderTargetsHorizontal[ i ].setSize( resx, resy );
+			this.renderTargetsVertical[ i ].setSize( resx, resy );
+
+			this.separableBlurMaterials[ i ].uniforms[ 'invSize' ].value = new three__WEBPACK_IMPORTED_MODULE_1__.Vector2( 1 / resx, 1 / resy );
+
+			resx = Math.round( resx / 2 );
+			resy = Math.round( resy / 2 );
+
+		}
+
+	}
+
+	render( renderer, writeBuffer, readBuffer, deltaTime, maskActive ) {
+
+		renderer.getClearColor( this._oldClearColor );
+		this.oldClearAlpha = renderer.getClearAlpha();
+		const oldAutoClear = renderer.autoClear;
+		renderer.autoClear = false;
+
+		renderer.setClearColor( this.clearColor, 0 );
+
+		if ( maskActive ) renderer.state.buffers.stencil.setTest( false );
+
+		// Render input to screen
+
+		if ( this.renderToScreen ) {
+
+			this.fsQuad.material = this.basic;
+			this.basic.map = readBuffer.texture;
+
+			renderer.setRenderTarget( null );
+			renderer.clear();
+			this.fsQuad.render( renderer );
+
+		}
+
+		// 1. Extract Bright Areas
+
+		this.highPassUniforms[ 'tDiffuse' ].value = readBuffer.texture;
+		this.highPassUniforms[ 'luminosityThreshold' ].value = this.threshold;
+		this.fsQuad.material = this.materialHighPassFilter;
+
+		renderer.setRenderTarget( this.renderTargetBright );
+		renderer.clear();
+		this.fsQuad.render( renderer );
+
+		// 2. Blur All the mips progressively
+
+		let inputRenderTarget = this.renderTargetBright;
+
+		for ( let i = 0; i < this.nMips; i ++ ) {
+
+			this.fsQuad.material = this.separableBlurMaterials[ i ];
+
+			this.separableBlurMaterials[ i ].uniforms[ 'colorTexture' ].value = inputRenderTarget.texture;
+			this.separableBlurMaterials[ i ].uniforms[ 'direction' ].value = UnrealBloomPass.BlurDirectionX;
+			renderer.setRenderTarget( this.renderTargetsHorizontal[ i ] );
+			renderer.clear();
+			this.fsQuad.render( renderer );
+
+			this.separableBlurMaterials[ i ].uniforms[ 'colorTexture' ].value = this.renderTargetsHorizontal[ i ].texture;
+			this.separableBlurMaterials[ i ].uniforms[ 'direction' ].value = UnrealBloomPass.BlurDirectionY;
+			renderer.setRenderTarget( this.renderTargetsVertical[ i ] );
+			renderer.clear();
+			this.fsQuad.render( renderer );
+
+			inputRenderTarget = this.renderTargetsVertical[ i ];
+
+		}
+
+		// Composite All the mips
+
+		this.fsQuad.material = this.compositeMaterial;
+		this.compositeMaterial.uniforms[ 'bloomStrength' ].value = this.strength;
+		this.compositeMaterial.uniforms[ 'bloomRadius' ].value = this.radius;
+		this.compositeMaterial.uniforms[ 'bloomTintColors' ].value = this.bloomTintColors;
+
+		renderer.setRenderTarget( this.renderTargetsHorizontal[ 0 ] );
+		renderer.clear();
+		this.fsQuad.render( renderer );
+
+		// Blend it additively over the input texture
+
+		this.fsQuad.material = this.blendMaterial;
+		this.copyUniforms[ 'tDiffuse' ].value = this.renderTargetsHorizontal[ 0 ].texture;
+
+		if ( maskActive ) renderer.state.buffers.stencil.setTest( true );
+
+		if ( this.renderToScreen ) {
+
+			renderer.setRenderTarget( null );
+			this.fsQuad.render( renderer );
+
+		} else {
+
+			renderer.setRenderTarget( readBuffer );
+			this.fsQuad.render( renderer );
+
+		}
+
+		// Restore renderer settings
+
+		renderer.setClearColor( this._oldClearColor, this.oldClearAlpha );
+		renderer.autoClear = oldAutoClear;
+
+	}
+
+	getSeparableBlurMaterial( kernelRadius ) {
+
+		const coefficients = [];
+
+		for ( let i = 0; i < kernelRadius; i ++ ) {
+
+			coefficients.push( 0.39894 * Math.exp( - 0.5 * i * i / ( kernelRadius * kernelRadius ) ) / kernelRadius );
+
+		}
+
+		return new three__WEBPACK_IMPORTED_MODULE_1__.ShaderMaterial( {
+
+			defines: {
+				'KERNEL_RADIUS': kernelRadius
+			},
+
+			uniforms: {
+				'colorTexture': { value: null },
+				'invSize': { value: new three__WEBPACK_IMPORTED_MODULE_1__.Vector2( 0.5, 0.5 ) }, // inverse texture size
+				'direction': { value: new three__WEBPACK_IMPORTED_MODULE_1__.Vector2( 0.5, 0.5 ) },
+				'gaussianCoefficients': { value: coefficients } // precomputed Gaussian coefficients
+			},
+
+			vertexShader:
+				`varying vec2 vUv;
+				void main() {
+					vUv = uv;
+					gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+				}`,
+
+			fragmentShader:
+				`#include <common>
+				varying vec2 vUv;
+				uniform sampler2D colorTexture;
+				uniform vec2 invSize;
+				uniform vec2 direction;
+				uniform float gaussianCoefficients[KERNEL_RADIUS];
+
+				void main() {
+					float weightSum = gaussianCoefficients[0];
+					vec3 diffuseSum = texture2D( colorTexture, vUv ).rgb * weightSum;
+					for( int i = 1; i < KERNEL_RADIUS; i ++ ) {
+						float x = float(i);
+						float w = gaussianCoefficients[i];
+						vec2 uvOffset = direction * invSize * x;
+						vec3 sample1 = texture2D( colorTexture, vUv + uvOffset ).rgb;
+						vec3 sample2 = texture2D( colorTexture, vUv - uvOffset ).rgb;
+						diffuseSum += (sample1 + sample2) * w;
+						weightSum += 2.0 * w;
+					}
+					gl_FragColor = vec4(diffuseSum/weightSum, 1.0);
+				}`
+		} );
+
+	}
+
+	getCompositeMaterial( nMips ) {
+
+		return new three__WEBPACK_IMPORTED_MODULE_1__.ShaderMaterial( {
+
+			defines: {
+				'NUM_MIPS': nMips
+			},
+
+			uniforms: {
+				'blurTexture1': { value: null },
+				'blurTexture2': { value: null },
+				'blurTexture3': { value: null },
+				'blurTexture4': { value: null },
+				'blurTexture5': { value: null },
+				'bloomStrength': { value: 1.0 },
+				'bloomFactors': { value: null },
+				'bloomTintColors': { value: null },
+				'bloomRadius': { value: 0.0 }
+			},
+
+			vertexShader:
+				`varying vec2 vUv;
+				void main() {
+					vUv = uv;
+					gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+				}`,
+
+			fragmentShader:
+				`varying vec2 vUv;
+				uniform sampler2D blurTexture1;
+				uniform sampler2D blurTexture2;
+				uniform sampler2D blurTexture3;
+				uniform sampler2D blurTexture4;
+				uniform sampler2D blurTexture5;
+				uniform float bloomStrength;
+				uniform float bloomRadius;
+				uniform float bloomFactors[NUM_MIPS];
+				uniform vec3 bloomTintColors[NUM_MIPS];
+
+				float lerpBloomFactor(const in float factor) {
+					float mirrorFactor = 1.2 - factor;
+					return mix(factor, mirrorFactor, bloomRadius);
+				}
+
+				void main() {
+					gl_FragColor = bloomStrength * ( lerpBloomFactor(bloomFactors[0]) * vec4(bloomTintColors[0], 1.0) * texture2D(blurTexture1, vUv) +
+						lerpBloomFactor(bloomFactors[1]) * vec4(bloomTintColors[1], 1.0) * texture2D(blurTexture2, vUv) +
+						lerpBloomFactor(bloomFactors[2]) * vec4(bloomTintColors[2], 1.0) * texture2D(blurTexture3, vUv) +
+						lerpBloomFactor(bloomFactors[3]) * vec4(bloomTintColors[3], 1.0) * texture2D(blurTexture4, vUv) +
+						lerpBloomFactor(bloomFactors[4]) * vec4(bloomTintColors[4], 1.0) * texture2D(blurTexture5, vUv) );
+				}`
+		} );
+
+	}
+
+}
+
+UnrealBloomPass.BlurDirectionX = new three__WEBPACK_IMPORTED_MODULE_1__.Vector2( 1.0, 0.0 );
+UnrealBloomPass.BlurDirectionY = new three__WEBPACK_IMPORTED_MODULE_1__.Vector2( 0.0, 1.0 );
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/shaders/CopyShader.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/shaders/CopyShader.js ***!
+  \***************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   CopyShader: () => (/* binding */ CopyShader)
+/* harmony export */ });
+/**
+ * Full-screen textured quad shader
+ */
+
+const CopyShader = {
+
+	name: 'CopyShader',
+
+	uniforms: {
+
+		'tDiffuse': { value: null },
+		'opacity': { value: 1.0 }
+
+	},
+
+	vertexShader: /* glsl */`
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+
+	fragmentShader: /* glsl */`
+
+		uniform float opacity;
+
+		uniform sampler2D tDiffuse;
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vec4 texel = texture2D( tDiffuse, vUv );
+			gl_FragColor = opacity * texel;
+
+
+		}`
+
+};
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/shaders/FilmShader.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/shaders/FilmShader.js ***!
+  \***************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   FilmShader: () => (/* binding */ FilmShader)
+/* harmony export */ });
+const FilmShader = {
+
+	name: 'FilmShader',
+
+	uniforms: {
+
+		'tDiffuse': { value: null },
+		'time': { value: 0.0 },
+		'intensity': { value: 0.5 },
+		'grayscale': { value: false }
+
+	},
+
+	vertexShader: /* glsl */`
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+
+	fragmentShader: /* glsl */`
+
+		#include <common>
+
+		uniform float intensity;
+		uniform bool grayscale;
+		uniform float time;
+
+		uniform sampler2D tDiffuse;
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vec4 base = texture2D( tDiffuse, vUv );
+
+			float noise = rand( fract( vUv + time ) );
+
+			vec3 color = base.rgb + base.rgb * clamp( 0.1 + noise, 0.0, 1.0 );
+
+			color = mix( base.rgb, color, intensity );
+
+			if ( grayscale ) {
+
+				color = vec3( luminance( color ) ); // assuming linear-srgb
+
+			}
+
+			gl_FragColor = vec4( color, base.a );
+
+		}`,
+
+};
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/three/examples/jsm/shaders/LuminosityHighPassShader.js":
+/*!*****************************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/shaders/LuminosityHighPassShader.js ***!
+  \*****************************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   LuminosityHighPassShader: () => (/* binding */ LuminosityHighPassShader)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+
+
+/**
+ * Luminosity
+ * http://en.wikipedia.org/wiki/Luminosity
+ */
+
+const LuminosityHighPassShader = {
+
+	name: 'LuminosityHighPassShader',
+
+	shaderID: 'luminosityHighPass',
+
+	uniforms: {
+
+		'tDiffuse': { value: null },
+		'luminosityThreshold': { value: 1.0 },
+		'smoothWidth': { value: 1.0 },
+		'defaultColor': { value: new three__WEBPACK_IMPORTED_MODULE_0__.Color( 0x000000 ) },
+		'defaultOpacity': { value: 0.0 }
+
+	},
+
+	vertexShader: /* glsl */`
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+
+	fragmentShader: /* glsl */`
+
+		uniform sampler2D tDiffuse;
+		uniform vec3 defaultColor;
+		uniform float defaultOpacity;
+		uniform float luminosityThreshold;
+		uniform float smoothWidth;
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vec4 texel = texture2D( tDiffuse, vUv );
+
+			float v = luminance( texel.xyz );
+
+			vec4 outputColor = vec4( defaultColor.rgb, defaultOpacity );
+
+			float alpha = smoothstep( luminosityThreshold, luminosityThreshold + smoothWidth, v );
+
+			gl_FragColor = mix( outputColor, texel, alpha );
+
+		}`
+
+};
+
+
+
+
+/***/ }),
+
 /***/ "./src/engine/core/core.js":
 /*!*********************************!*\
   !*** ./src/engine/core/core.js ***!
@@ -89170,8 +90551,6 @@ var Transformation = /*#__PURE__*/function () {
   }, {
     key: "GetTranslation",
     value: function GetTranslation() {
-      console.log("MATRIX");
-      console.log(this.matrix.matrix[12], this.matrix.matrix[13], this.matrix.matrix[14]);
       return new three__WEBPACK_IMPORTED_MODULE_3__.Vector3(this.matrix.matrix[12], this.matrix.matrix[13], this.matrix.matrix[14]);
     }
   }, {
@@ -100168,7 +101547,9 @@ var ThreeMaterialHandler = /*#__PURE__*/function () {
         opacity: material.opacity,
         transparent: material.transparent,
         alphaTest: material.alphaTest,
-        side: three__WEBPACK_IMPORTED_MODULE_7__.DoubleSide
+        side: three__WEBPACK_IMPORTED_MODULE_7__.DoubleSide,
+        roughness: material.roughness || 0.5,
+        metalness: material.metalness || 0.5
       };
       if (this.conversionParams.forceMediumpForMaterials) {
         materialParams.precision = 'mediump';
@@ -100187,6 +101568,32 @@ var ThreeMaterialHandler = /*#__PURE__*/function () {
             threeMaterial.specularMap = threeTexture;
           });
         }
+
+        // Load and assign textures supported by MeshPhongMaterial
+        this.LoadFaceTexture(threeMaterial, material.diffuseMap, function (threeTexture) {
+          if (!material.multiplyDiffuseMap) {
+            threeMaterial.color.setRGB(1.0, 1.0, 1.0);
+          }
+          threeMaterial.map = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.bumpMap, function (threeTexture) {
+          threeMaterial.bumpMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.normalMap, function (threeTexture) {
+          threeMaterial.normalMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.emissiveMap, function (threeTexture) {
+          threeMaterial.emissiveMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.displacementMap, function (threeTexture) {
+          threeMaterial.displacementMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.alphaMap, function (threeTexture) {
+          threeMaterial.alphaMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.envMap, function (threeTexture) {
+          threeMaterial.envMap = threeTexture;
+        });
       } else if (this.shadingType === _threeutils_js__WEBPACK_IMPORTED_MODULE_6__.ShadingType.Physical) {
         threeMaterial = new three__WEBPACK_IMPORTED_MODULE_7__.MeshStandardMaterial(materialParams);
         if (material.type === _model_material_js__WEBPACK_IMPORTED_MODULE_3__.MaterialType.Physical) {
@@ -100199,24 +101606,38 @@ var ThreeMaterialHandler = /*#__PURE__*/function () {
             threeMaterial.roughnessMap = threeTexture;
           });
         }
+
+        // Load and assign all possible PBR textures
+        this.LoadFaceTexture(threeMaterial, material.diffuseMap, function (threeTexture) {
+          if (!material.multiplyDiffuseMap) {
+            threeMaterial.color.setRGB(1.0, 1.0, 1.0);
+          }
+          threeMaterial.map = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.bumpMap, function (threeTexture) {
+          threeMaterial.bumpMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.normalMap, function (threeTexture) {
+          threeMaterial.normalMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.metalnessMap, function (threeTexture) {
+          threeMaterial.metalnessMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.roughnessMap, function (threeTexture) {
+          threeMaterial.roughnessMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.emissiveMap, function (threeTexture) {
+          threeMaterial.emissiveMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.aoMap, function (threeTexture) {
+          threeMaterial.aoMap = threeTexture;
+        });
+        this.LoadFaceTexture(threeMaterial, material.displacementMap, function (threeTexture) {
+          threeMaterial.displacementMap = threeTexture;
+        });
       }
       var emissiveColor = (0,_threeutils_js__WEBPACK_IMPORTED_MODULE_6__.ConvertColorToThreeColor)(material.emissive);
       threeMaterial.emissive = emissiveColor;
-      this.LoadFaceTexture(threeMaterial, material.diffuseMap, function (threeTexture) {
-        if (!material.multiplyDiffuseMap) {
-          threeMaterial.color.setRGB(1.0, 1.0, 1.0);
-        }
-        threeMaterial.map = threeTexture;
-      });
-      this.LoadFaceTexture(threeMaterial, material.bumpMap, function (threeTexture) {
-        threeMaterial.bumpMap = threeTexture;
-      });
-      this.LoadFaceTexture(threeMaterial, material.normalMap, function (threeTexture) {
-        threeMaterial.normalMap = threeTexture;
-      });
-      this.LoadFaceTexture(threeMaterial, material.emissiveMap, function (threeTexture) {
-        threeMaterial.emissiveMap = threeTexture;
-      });
       if (material.source !== _model_material_js__WEBPACK_IMPORTED_MODULE_3__.MaterialSource.Model) {
         threeMaterial.userData.source = material.source;
         this.conversionOutput.defaultMaterials.push(threeMaterial);
@@ -100255,7 +101676,7 @@ var ThreeMaterialHandler = /*#__PURE__*/function () {
         threeTexture.repeat.x = texture.scale.x;
         threeTexture.repeat.y = texture.scale.y;
       }
-      if (texture === null || !texture.IsValid()) {
+      if (!texture || !texture.IsValid()) {
         return;
       }
       var loader = new three__WEBPACK_IMPORTED_MODULE_7__.TextureLoader();
@@ -101270,7 +102691,7 @@ var EmbeddedViewer = /*#__PURE__*/function () {
     this.viewer.Init(this.canvas);
     var width = this.parentElement.clientWidth;
     var height = this.parentElement.clientHeight;
-    console.log(width, height);
+    //console.log(width, height);
     this.viewer.Resize(width, height);
     if (this.parameters.projectionMode) {
       this.viewer.SetProjectionMode(this.parameters.projectionMode);
@@ -101300,9 +102721,10 @@ var EmbeddedViewer = /*#__PURE__*/function () {
   return _createClass(EmbeddedViewer, [{
     key: "LoadModelFromUrlList",
     value: function LoadModelFromUrlList(modelUrls) {
+      var selectedItem = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "";
       (0,_io_fileutils_js__WEBPACK_IMPORTED_MODULE_4__.TransformFileHostUrls)(modelUrls);
       var inputFiles = (0,_import_importerfiles_js__WEBPACK_IMPORTED_MODULE_2__.InputFilesFromUrls)(modelUrls);
-      this.LoadModelFromInputFiles(inputFiles);
+      this.LoadModelFromInputFiles(inputFiles, selectedItem);
     }
 
     /**
@@ -101325,7 +102747,7 @@ var EmbeddedViewer = /*#__PURE__*/function () {
      */
   }, {
     key: "LoadModelFromInputFiles",
-    value: function LoadModelFromInputFiles(inputFiles) {
+    value: function LoadModelFromInputFiles(inputFiles, selectedItem) {
       var _this2 = this;
       if (inputFiles === null || inputFiles.length === 0) {
         return;
@@ -101358,6 +102780,14 @@ var EmbeddedViewer = /*#__PURE__*/function () {
         onModelFinished: function onModelFinished(importResult, threeObject) {
           _this2.parentElement.removeChild(progressDiv);
           threeObject.name = "rootScene";
+
+          // Rename direct children with the name matching selectedItem
+          threeObject.children.forEach(function (child) {
+            if (child.isObject3D) {
+              console.log(child);
+              child.name = selectedItem;
+            }
+          });
           _this2.canvas.style.display = 'inherit';
           _this2.viewer.SetMainObject(threeObject);
           var boundingSphere = _this2.viewer.GetBoundingSphere(function (meshUserData) {
@@ -101365,6 +102795,7 @@ var EmbeddedViewer = /*#__PURE__*/function () {
           });
           _this2.viewer.AdjustClippingPlanesToSphere(boundingSphere);
           if (_this2.parameters.camera) {
+            console.log(_this2.parameters.camera);
             _this2.viewer.SetCamera(_this2.parameters.camera);
           } else {
             _this2.viewer.SetUpVector(_geometry_geometry_js__WEBPACK_IMPORTED_MODULE_1__.Direction.Y, false);
@@ -101374,8 +102805,6 @@ var EmbeddedViewer = /*#__PURE__*/function () {
           if (_this2.parameters.onModelLoaded) {
             _this2.parameters.onModelLoaded();
           }
-          _this2.viewer.CreateBoundingBoxMesh();
-          _this2.viewer.CreateBoundingBoxesAndAnnotations();
         },
         onTextureLoaded: function onTextureLoaded() {
           _this2.viewer.Render();
@@ -101623,7 +103052,6 @@ function setupEventListeners(viewer) {
     });
   }
   repereCheckbox.addEventListener('change', function () {
-    console.log('fuck you');
     var repere = viewer.GetViewer().GetRepere();
     if (repereCheckbox.checked && blackModeCheckbox.checked) {
       repere.visible = true;
@@ -101667,6 +103095,7 @@ function setupEventListeners(viewer) {
     var scene = viewer.GetViewer().GetScene();
     scene.traverse(function (child) {
       if (child.userData.isAnnotation) {
+        console.log("cihiuheuihfuiehuifr");
         if (cotationCheckbox.checked) {
           child.visible = true;
         } else {
@@ -101747,12 +103176,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _geometry_tween_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../geometry/tween.js */ "./src/engine/geometry/tween.js");
 /* harmony import */ var _camera_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./camera.js */ "./src/engine/viewer/camera.js");
 /* harmony import */ var _domutils_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./domutils.js */ "./src/engine/viewer/domutils.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+
 
 
 
@@ -101988,7 +103419,12 @@ var Navigation = /*#__PURE__*/function () {
     this.onContext = null;
     this.distance = null;
     this.minimumDistance = 0; // Default minimum distance
+    this.minimumDistanceInit = 0; // Initial minimum distance
     this.cameraMoveCallback = null; // Camera movement callback
+
+    this.isAnimating = false; // Animation flag
+
+    this.debouncedSmoothZoom = debounce(this.SmoothZoom.bind(this), 100); // Debounce with 100ms delay
 
     if (this.canvas.addEventListener) {
       this.canvas.addEventListener('mousedown', this.OnMouseDown.bind(this));
@@ -102198,19 +103634,6 @@ var Navigation = /*#__PURE__*/function () {
       }
     }
   }, {
-    key: "OnMouseWheel",
-    value: function OnMouseWheel(ev) {
-      var params = ev || window.event;
-      params.preventDefault();
-      var delta = -params.deltaY / 40;
-      var ratio = 0.1;
-      if (delta < 0) {
-        ratio = ratio * -1.0;
-      }
-      this.Zoom(ratio);
-      this.Update();
-    }
-  }, {
     key: "OnContextMenu",
     value: function OnContextMenu(ev) {
       ev.preventDefault();
@@ -102254,29 +103677,89 @@ var Navigation = /*#__PURE__*/function () {
     //     this.camera.center.Offset(verticalDirection, moveY);
     // }
   }, {
+    key: "OnMouseWheel",
+    value: function OnMouseWheel(ev) {
+      var params = ev || window.event;
+      params.preventDefault();
+      if (this.isAnimating) return; // Prevent new zoom while animating
+
+      var delta = -params.deltaY / 40;
+      var ratio = delta < 0 ? -0.1 : 0.1; // Adjust zoom in/out
+
+      this.Zoom(ratio);
+    }
+  }, {
+    key: "SmoothZoom",
+    value: function SmoothZoom(direction, move) {
+      var _this2 = this;
+      if (this.isAnimating) return;
+      this.isAnimating = true;
+      var stepCount = 30; // Number of steps for animation
+      var steps = (0,_geometry_tween_js__WEBPACK_IMPORTED_MODULE_3__.TweenCoord3D)(this.camera.eye, this.camera.eye.Clone().Offset(direction, move), stepCount, _geometry_tween_js__WEBPACK_IMPORTED_MODULE_3__.ParabolicTweenFunction);
+      var _Step = function Step(obj, steps, count, index) {
+        obj.camera.eye = steps[index];
+        obj.Update();
+        if (index < count - 1) {
+          requestAnimationFrame(function () {
+            return _Step(obj, steps, count, index + 1);
+          });
+        } else {
+          obj.isAnimating = false; // Reset animation flag only after the last step
+        }
+      };
+      requestAnimationFrame(function () {
+        return _Step(_this2, steps, stepCount, 0);
+      });
+    }
+  }, {
     key: "Zoom",
     value: function Zoom(ratio) {
+      if (this.isAnimating) return;
       var direction = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye);
       var distance = direction.Length();
       var move = distance * ratio;
-      this.camera.eye.Offset(direction, move);
+
+      // Ensure the new minimum distance accounts for bounding sphere size
+      var effectiveMinDistance = Math.max(this.minimumDistance, this.minimumDistanceInit);
+      if (distance - move <= effectiveMinDistance) {
+        move = distance - effectiveMinDistance;
+        //if (move <= 0) return; // Prevent zooming in too much
+      }
+      if (Math.abs(move) > 0.0001) {
+        this.camera.eye.Offset(direction, move);
+        this.Update();
+      }
     }
   }, {
-    key: "Zoomz",
-    value: function Zoomz(ratio) {
-      var direction = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye);
-      var move = this.distance * ratio;
+    key: "UpdateZoomLimit",
+    value: function UpdateZoomLimit(boundingSphere) {
+      var sphereCenter = boundingSphere.center;
+      var sphereRadius = boundingSphere.radius;
 
-      // Calculate the new potential distance
-      var newDistance = this.distance - move;
+      // Update the minimum distance based on the bounding sphere size
+      this.minimumDistance = this.minimumDistanceInit + sphereRadius;
+      var cameraPosition = new three__WEBPACK_IMPORTED_MODULE_6__.Vector3().copy(this.camera.eye);
+      var directionSub = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye);
+      var direction = new three__WEBPACK_IMPORTED_MODULE_6__.Vector3().subVectors(this.camera.center, cameraPosition).normalize();
 
-      // Clamp the distance to not go below minimumDistance
-      if (newDistance < this.minimumDistance) {
-        move = this.distance - this.minimumDistance; // Adjust move to stop at min distance
+      // Create a ray from the camera position
+      var ray = new three__WEBPACK_IMPORTED_MODULE_6__.Ray(cameraPosition, direction);
+      var intersectionPoint = new three__WEBPACK_IMPORTED_MODULE_6__.Vector3();
+      if (!ray.intersectSphere(new three__WEBPACK_IMPORTED_MODULE_6__.Sphere(sphereCenter, sphereRadius), intersectionPoint)) {
+        console.warn("No intersection with bounding sphere.");
+        return;
       }
-      this.camera.eye.Offset(direction, move);
-      this.distance -= move; // Update distance correctly
-      this.Update();
+
+      // Compute the distance between the camera and the intersection
+      var intersectionDistance = cameraPosition.distanceTo(intersectionPoint);
+      console.log("intersectionDistance: " + intersectionDistance);
+
+      // Move camera back if too close
+      if (intersectionDistance < this.minimumDistance) {
+        console.log("Camera is too close! Adjusting...");
+        var move = intersectionDistance - this.minimumDistance;
+        this.SmoothZoom(directionSub, move);
+      }
     }
   }, {
     key: "setMinimumDistance",
@@ -102314,6 +103797,22 @@ var Navigation = /*#__PURE__*/function () {
     }
   }]);
 }();
+function LinearTweenFunction(t) {
+  return t;
+}
+function debounce(func, wait) {
+  var timeout;
+  return function () {
+    var _this3 = this;
+    for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+    clearTimeout(timeout);
+    timeout = setTimeout(function () {
+      return func.apply(_this3, args);
+    }, wait);
+  };
+}
 
 /***/ }),
 
@@ -102547,11 +104046,15 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _shadingmodel_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./shadingmodel.js */ "./src/engine/viewer/shadingmodel.js");
 /* harmony import */ var _viewermodel_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./viewermodel.js */ "./src/engine/viewer/viewermodel.js");
 /* harmony import */ var _repere_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./repere.js */ "./src/engine/viewer/repere.js");
-/* harmony import */ var gsap__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! gsap */ "./node_modules/gsap/index.js");
+/* harmony import */ var gsap__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! gsap */ "./node_modules/gsap/index.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! three/examples/jsm/geometries/TextGeometry.js */ "./node_modules/three/examples/jsm/geometries/TextGeometry.js");
-/* harmony import */ var three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! three/examples/jsm/loaders/FontLoader.js */ "./node_modules/three/examples/jsm/loaders/FontLoader.js");
+/* harmony import */ var three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! three/examples/jsm/geometries/TextGeometry.js */ "./node_modules/three/examples/jsm/geometries/TextGeometry.js");
+/* harmony import */ var three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! three/examples/jsm/loaders/FontLoader.js */ "./node_modules/three/examples/jsm/loaders/FontLoader.js");
+/* harmony import */ var three_examples_jsm_postprocessing_EffectComposer_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! three/examples/jsm/postprocessing/EffectComposer.js */ "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js");
+/* harmony import */ var three_examples_jsm_postprocessing_RenderPass_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! three/examples/jsm/postprocessing/RenderPass.js */ "./node_modules/three/examples/jsm/postprocessing/RenderPass.js");
+/* harmony import */ var three_examples_jsm_postprocessing_UnrealBloomPass_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! three/examples/jsm/postprocessing/UnrealBloomPass.js */ "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js");
+/* harmony import */ var three_examples_jsm_postprocessing_FilmPass_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! three/examples/jsm/postprocessing/FilmPass.js */ "./node_modules/three/examples/jsm/postprocessing/FilmPass.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
@@ -102561,6 +104064,10 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+
+
+
+
 
 
 
@@ -102769,18 +104276,18 @@ var Viewer = /*#__PURE__*/function () {
       var maxDimension = Math.max(size.x, size.y, size.z);
 
       // Key Light
-      var keyLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 1.0);
+      var keyLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.5);
       keyLight.position.set(center.x + maxDimension, center.y + maxDimension, center.z + maxDimension);
       keyLight.castShadow = true;
       this.scene.add(keyLight);
 
       // Fill Light
-      var fillLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.5);
+      var fillLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.2);
       fillLight.position.set(center.x - maxDimension, center.y + maxDimension, center.z + maxDimension);
       this.scene.add(fillLight);
 
       // Back Light (Red)
-      var backLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.5);
+      var backLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.1);
       backLight.position.set(center.x, center.y + maxDimension, center.z - maxDimension);
       this.scene.add(backLight);
     }
@@ -102806,10 +104313,16 @@ var Viewer = /*#__PURE__*/function () {
       this.InitNavigation();
       this.InitShading();
       this.InitMasks();
+      this.InitPostProcessing();
       this.Render();
 
       // Start the animation loop after initialization
       this.animate();
+    }
+  }, {
+    key: "SetBoudingSphere",
+    value: function SetBoudingSphere(boundingSphere) {
+      this.boundingSphere = boundingSphere;
     }
   }, {
     key: "SetMouseClickHandler",
@@ -102948,14 +104461,21 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "FitSphereToWindow",
     value: function FitSphereToWindow(boundingSphere, animation) {
+      var duration = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+      var centered = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
       if (boundingSphere === null) {
         return;
       }
-      var center = new _geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_0__.Coord3D(boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z);
+      var center;
+      if (!centered) {
+        center = new _geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_0__.Coord3D(boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z);
+      } else {
+        center = new _geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_0__.Coord3D(0, 0, 0);
+      }
       var radius = boundingSphere.radius;
       var newCamera = this.navigation.GetFitToSphereCamera(center, radius);
       this.defaultCameraParameters = newCamera.Clone();
-      this.navigation.MoveCamera(newCamera, animation ? this.settings.animationSteps : 0);
+      this.navigation.MoveCamera(newCamera, animation ? this.settings.animationSteps : duration);
     }
   }, {
     key: "AdjustClippingPlanes",
@@ -103021,6 +104541,21 @@ var Viewer = /*#__PURE__*/function () {
       this.Render();
     }
   }, {
+    key: "InitPostProcessing",
+    value: function InitPostProcessing() {
+      var composer = new three_examples_jsm_postprocessing_EffectComposer_js__WEBPACK_IMPORTED_MODULE_12__.EffectComposer(this.renderer);
+      var renderPass = new three_examples_jsm_postprocessing_RenderPass_js__WEBPACK_IMPORTED_MODULE_13__.RenderPass(this.scene, this.camera);
+      composer.addPass(renderPass);
+      var bloomPass = new three_examples_jsm_postprocessing_UnrealBloomPass_js__WEBPACK_IMPORTED_MODULE_14__.UnrealBloomPass(new three__WEBPACK_IMPORTED_MODULE_10__.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+      bloomPass.threshold = 0;
+      bloomPass.strength = 0.1;
+      bloomPass.radius = 0;
+      composer.addPass(bloomPass);
+      var filmPass = new three_examples_jsm_postprocessing_FilmPass_js__WEBPACK_IMPORTED_MODULE_15__.FilmPass(0.35, 0.025, 648, false);
+      composer.addPass(filmPass);
+      this.composer = composer;
+    }
+  }, {
     key: "Render",
     value: function Render() {
       var navigationCamera = this.navigation.GetCamera();
@@ -103048,6 +104583,7 @@ var Viewer = /*#__PURE__*/function () {
       }
       this.shadingModel.UpdateByCamera(navigationCamera);
       this.renderer.render(this.scene, this.camera);
+      //this.composer.render();
     }
   }, {
     key: "SetMainObject",
@@ -103065,7 +104601,8 @@ var Viewer = /*#__PURE__*/function () {
       this.directionVectors = [];
       var numChildren = 0;
       object.traverse(function (child) {
-        if (child.isMesh && child.name !== '') {
+        if (child.isMesh) {
+          console.log(child);
           numChildren++;
         }
       });
@@ -103082,23 +104619,37 @@ var Viewer = /*#__PURE__*/function () {
       }
       var index = 0;
       object.traverse(function (child) {
-        if (child.isMesh && child.name !== '') {
+        if (child.isMesh) {
           _this2.initialPositions.push(child.position.clone());
           index++;
         }
       });
+
+      // Create a new group and set its position to (0, 0, 0)
+      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(object);
+      var center = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var group = new three__WEBPACK_IMPORTED_MODULE_10__.Group();
+      group.position.set(0, 0, 0);
+      this.scene.add(group);
+      group.name = 'mainGroup';
+
+      // Adjust the position of the mainObject and add it to the group
+      object.position.sub(center);
+      group.add(object);
       this.isAnimating = true;
-      this.mainObject = this.mainModel.GetMainObject().GetRootObject();
-      this.boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(this.mainObject, true);
+      this.mainObject = group;
+      this.boundingBox = boundingBox;
       var radius = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length() / 2;
 
       // Create the bounding sphere
-      this.centerBbox = this.boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      this.centerBbox = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(0, 0, 0);
       this.boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere(this.centerBbox, radius);
       this.size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      this.navigation.minimumDistanceInit = this.boundingSphere.radius * 2;
 
       // Setup three-point lighting
       this.SetupThreePointLighting();
+      this.CreateBoundingBoxMesh();
       this.Render();
     }
   }, {
@@ -103209,10 +104760,11 @@ var Viewer = /*#__PURE__*/function () {
         }
       });
 
-      // Set the camera movement callback
-      this.navigation.setCameraMoveCallback(function () {
-        _this3.onCameraMove();
-      });
+      // // Set the camera movement callback
+      // this.navigation.setCameraMoveCallback(() => {
+      //     this.onCameraMove();
+      // });
+
       this.upVector = new UpVector();
     }
   }, {
@@ -103309,12 +104861,8 @@ var Viewer = /*#__PURE__*/function () {
     value: function animate() {
       var _this4 = this;
       requestAnimationFrame(this.animate);
-      if (this.isAnimating && this.mainModel) {
-        var mainObject = this.mainModel.GetMainObject().GetRootObject();
-        if (mainObject) {
-          //this.UpdateCameraAndControls();
-          mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
-        }
+      if (this.isAnimating && this.mainObject) {
+        this.mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
       }
       this.GetScene().traverse(function (child) {
         if (child.userData.viewCam && child.userData.isAnnotation) {
@@ -103360,6 +104908,7 @@ var Viewer = /*#__PURE__*/function () {
     value: function ExplodeModel(factor) {
       var _this7 = this;
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.5;
+      console.log("called");
       if (!this.mainObject) {
         console.error("Main object is not defined.");
         return;
@@ -103376,27 +104925,35 @@ var Viewer = /*#__PURE__*/function () {
 
       // Scale explosion distance based on slider factor (0 to 100)
       var explosionDistance = factor / 100 * maxExplosionDistance;
-      console.log('hyyyy');
-      console.log("factor:", factor);
-      console.log("boundingSphere.radius:", this.boundingSphere.radius);
-      console.log("maxExplosionDistance:", maxExplosionDistance);
-      console.log("explosionDistance:", explosionDistance);
       if (!this.initialPositions || !this.directionVectors) {
         console.error("Initial positions or direction vectors are not defined.");
         return;
       }
       var index = 0;
+      var totalMeshes = 0;
+      var completedMeshes = 0;
       this.mainObject.traverse(function (child) {
-        if (child.isMesh && child.name !== '') {
+        if (child.isMesh) {
+          totalMeshes++;
           if (index < _this7.directionVectors.length) {
             var direction = _this7.directionVectors[index].clone();
             var newPosition = _this7.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
-            gsap__WEBPACK_IMPORTED_MODULE_12__["default"].to(child.position, {
+
+            // Animate each mesh's position with GSAP
+            gsap__WEBPACK_IMPORTED_MODULE_16__["default"].to(child.position, {
               x: newPosition.x,
               y: newPosition.y,
               z: newPosition.z,
               duration: duration,
-              ease: "power2.out"
+              ease: "power2.out",
+              onComplete: function onComplete() {
+                completedMeshes++;
+                if (completedMeshes === totalMeshes) {
+                  // All animations are complete, now update the bounding box and zoom limit
+                  console.log("All animations are complete");
+                  _this7.UpdateCameraAndControls();
+                }
+              }
             });
             index++;
           } else {
@@ -103404,6 +104961,9 @@ var Viewer = /*#__PURE__*/function () {
           }
         }
       });
+
+      // You can still update the camera before the animations finish, but bounding box recalculation and zoom limit should wait
+      // this.UpdateCameraAndControls(); // This line can be removed if you want to defer the update.
     }
   }, {
     key: "CreateBoundingBoxMesh",
@@ -103464,10 +105024,10 @@ var Viewer = /*#__PURE__*/function () {
         arrowHelper2.visible = false;
       }
       mainObject.add(arrowHelper2);
-      var loader = new three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_13__.FontLoader();
+      var loader = new three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__.FontLoader();
       loader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', function (font) {
         var textSize = objectHeight * textSizePercent;
-        var textGeometry = new three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_14__.TextGeometry(label, {
+        var textGeometry = new three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_18__.TextGeometry(label, {
           font: font,
           size: textSize,
           depth: 0.02,
@@ -103564,9 +105124,6 @@ var Viewer = /*#__PURE__*/function () {
           this.selectedObject.material = this.originalMaterial;
         }
         this.navigation.SetNavigationMode(1);
-        //this.controls.enabled = true;
-        //this.controls.saveState();
-        //this.controls.reset();
       }
       66;
       this.selectedObject = null;
@@ -103591,20 +105148,14 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "UpdateCameraAndControls",
     value: function UpdateCameraAndControls() {
-      var distanceScaleFactor = 3;
-
-      // Calculate the bounding sphere from the bounding box
+      // Calculate the bounding box of the main object
+      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(this.mainObject, true);
       var boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere();
-      this.boundingBox.getBoundingSphere(boundingSphere);
-      var minDistance = boundingSphere.radius * distanceScaleFactor;
-      console.log(minDistance);
-
-      // Set the minimum distance for the camera
-      this.navigation.setMinimumDistance(minDistance);
-
-      // Call the Zoom method with a ratio of 0 to apply the minimum distance constraint
-      this.navigation.Zoom(0);
-      this.Render();
+      boundingBox.getBoundingSphere(boundingSphere);
+      this.FitSphereToWindow(boundingSphere, false, 30, true);
+      // Update the navigation with the new bounding box
+      //this.navigation.UpdateZoomLimit(boundingSphere);
+      //this.Render();
     }
   }]);
 }();
@@ -103685,7 +105236,18 @@ var ViewerModel = /*#__PURE__*/function () {
         this.Clear();
       }
       this.rootObject = rootObject;
+      this.rootObject.name = "rootObject";
       this.scene.add(this.rootObject);
+
+      // Log all children and the number of them
+      var numChildren = 0;
+      this.rootObject.traverse(function (child) {
+        if (child.isMesh) {
+          //console.log(child);
+          numChildren++;
+        }
+      });
+      console.log("Number of children: ".concat(numChildren));
     }
   }, {
     key: "GetRootObject",
@@ -104043,13 +105605,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _engine_viewer_embeddedviewer_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./engine/viewer/embeddedviewer.js */ "./src/engine/viewer/embeddedviewer.js");
 /* harmony import */ var _engine_viewer_eventListeners_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./engine/viewer/eventListeners.js */ "./src/engine/viewer/eventListeners.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 
@@ -104100,39 +105662,65 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // // Add event listener for file input
-  // const fileInput = document.getElementById('file-input');
-  // fileInput.addEventListener('change', async (event) => {
-  //     console.log('File input changed');
-  //     console.log(event.target.files);
-  //     const files = event.target.files;
-  //     if (files.length > 0) {
-  //         await handleFileUpload(files, viewer);
-  //     }
-  // });
-
-  // async function handleFileUpload(files, viewer) {
-  //     // Assuming the files are model files, you can load them into the viewer
-  //     viewer.LoadModelFromFileList(files);
-  // }
-
-  window.cleanAndLoadItem = /*#__PURE__*/function () {
-    var _cleanAndLoadItem = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(selectedItem) {
-      var files, fileData, modelUrls;
+  // Add event listener for file input
+  var fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('change', /*#__PURE__*/function () {
+    var _ref = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(event) {
+      var files;
       return _regeneratorRuntime().wrap(function _callee$(_context) {
         while (1) switch (_context.prev = _context.next) {
           case 0:
-            if (!selectedItem) {
-              _context.next = 11;
+            console.log('File input changed');
+            files = event.target.files;
+            if (!(files.length > 0)) {
+              _context.next = 5;
               break;
             }
-            _context.next = 3;
+            _context.next = 5;
+            return handleFileUpload(files, viewer);
+          case 5:
+          case "end":
+            return _context.stop();
+        }
+      }, _callee);
+    }));
+    return function (_x) {
+      return _ref.apply(this, arguments);
+    };
+  }());
+  function handleFileUpload(_x2, _x3) {
+    return _handleFileUpload.apply(this, arguments);
+  }
+  function _handleFileUpload() {
+    _handleFileUpload = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(files, viewer) {
+      return _regeneratorRuntime().wrap(function _callee3$(_context3) {
+        while (1) switch (_context3.prev = _context3.next) {
+          case 0:
+            // Assuming the files are model files, you can load them into the viewer
+            viewer.LoadModelFromFileList(files, "testItem");
+          case 1:
+          case "end":
+            return _context3.stop();
+        }
+      }, _callee3);
+    }));
+    return _handleFileUpload.apply(this, arguments);
+  }
+  window.cleanAndLoadItem = /*#__PURE__*/function () {
+    var _cleanAndLoadItem = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(selectedItem) {
+      var files, fileData, modelUrls;
+      return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+        while (1) switch (_context2.prev = _context2.next) {
+          case 0:
+            if (!selectedItem) {
+              _context2.next = 10;
+              break;
+            }
+            _context2.next = 3;
             return fetchDynamoData(false, selectedItem);
           case 3:
-            files = _context.sent;
-            fileData = files[0];
-            console.log(fileData);
-
+            files = _context2.sent;
+            fileData = files[0]; //console.log(fileData);
             // Create the modelUrls array
             modelUrls = [];
             if (fileData.objectsUrls) {
@@ -104146,30 +105734,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Load the model using the modelUrls array
-            viewerContainer.viewerInstance.LoadModelFromUrlList(modelUrls);
-          case 11:
+            viewerContainer.viewerInstance.LoadModelFromUrlList(modelUrls, selectedItem);
+          case 10:
           case "end":
-            return _context.stop();
+            return _context2.stop();
         }
-      }, _callee);
+      }, _callee2);
     }));
-    function cleanAndLoadItem(_x) {
+    function cleanAndLoadItem(_x4) {
       return _cleanAndLoadItem.apply(this, arguments);
     }
     return cleanAndLoadItem;
   }();
-  function fetchDynamoData(_x2, _x3) {
+  function fetchDynamoData(_x5, _x6) {
     return _fetchDynamoData.apply(this, arguments);
   }
   function _fetchDynamoData() {
-    _fetchDynamoData = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(init, selectedItem) {
+    _fetchDynamoData = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee4(init, selectedItem) {
       var lambdaUrl, response, data, items;
-      return _regeneratorRuntime().wrap(function _callee2$(_context2) {
-        while (1) switch (_context2.prev = _context2.next) {
+      return _regeneratorRuntime().wrap(function _callee4$(_context4) {
+        while (1) switch (_context4.prev = _context4.next) {
           case 0:
             lambdaUrl = "https://2uhjohkckl.execute-api.eu-west-3.amazonaws.com/production/fetchDynamoDB";
-            _context2.prev = 1;
-            _context2.next = 4;
+            _context4.prev = 1;
+            _context4.next = 4;
             return fetch(lambdaUrl, {
               method: "POST",
               headers: {
@@ -104181,41 +105769,41 @@ document.addEventListener('DOMContentLoaded', function () {
               })
             });
           case 4:
-            response = _context2.sent;
+            response = _context4.sent;
             if (response.ok) {
-              _context2.next = 7;
+              _context4.next = 7;
               break;
             }
             throw new Error("HTTP error! status: ".concat(response.status));
           case 7:
-            _context2.next = 9;
+            _context4.next = 9;
             return response.json();
           case 9:
-            data = _context2.sent;
+            data = _context4.sent;
             console.log("Data received from Lambda:", data);
             items = JSON.parse(data.body);
             if (!init) {
-              _context2.next = 16;
+              _context4.next = 16;
               break;
             }
             populateDropdown(items);
-            _context2.next = 17;
+            _context4.next = 17;
             break;
           case 16:
-            return _context2.abrupt("return", items);
+            return _context4.abrupt("return", items);
           case 17:
-            _context2.next = 23;
+            _context4.next = 23;
             break;
           case 19:
-            _context2.prev = 19;
-            _context2.t0 = _context2["catch"](1);
-            console.error("Error calling Lambda function:", _context2.t0);
-            throw _context2.t0;
+            _context4.prev = 19;
+            _context4.t0 = _context4["catch"](1);
+            console.error("Error calling Lambda function:", _context4.t0);
+            throw _context4.t0;
           case 23:
           case "end":
-            return _context2.stop();
+            return _context4.stop();
         }
-      }, _callee2, null, [[1, 19]]);
+      }, _callee4, null, [[1, 19]]);
     }));
     return _fetchDynamoData.apply(this, arguments);
   }

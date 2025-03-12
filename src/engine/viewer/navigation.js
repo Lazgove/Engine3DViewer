@@ -4,6 +4,7 @@ import { DegRad, IsGreater, IsLower, IsZero } from '../geometry/geometry.js';
 import { ParabolicTweenFunction, TweenCoord3D } from '../geometry/tween.js';
 import { CameraIsEqual3D, NavigationMode } from './camera.js';
 import { GetDomElementClientCoordinates } from './domutils.js';
+import * as THREE from 'three';
 
 export class MouseInteraction {
     constructor() {
@@ -220,7 +221,12 @@ export class Navigation {
         this.distance = null;
 
         this.minimumDistance = 0; // Default minimum distance
+        this.minimumDistanceInit = 0; // Initial minimum distance
         this.cameraMoveCallback = null; // Camera movement callback
+
+        this.isAnimating = false; // Animation flag
+
+        this.debouncedSmoothZoom = debounce(this.SmoothZoom.bind(this), 100); // Debounce with 100ms delay
 
         if (this.canvas.addEventListener) {
             this.canvas.addEventListener('mousedown', this.OnMouseDown.bind(this));
@@ -437,20 +443,6 @@ export class Navigation {
         }
     }
 
-    OnMouseWheel(ev) {
-        let params = ev || window.event;
-        params.preventDefault();
-
-        let delta = -params.deltaY / 40;
-        let ratio = 0.1;
-        if (delta < 0) {
-            ratio = ratio * -1.0;
-        }
-
-        this.Zoom(ratio);
-        this.Update();
-    }
-
     OnContextMenu(ev) {
         ev.preventDefault();
 
@@ -495,30 +487,92 @@ export class Navigation {
     //     this.camera.center.Offset(verticalDirection, moveY);
     // }
 
+    OnMouseWheel(ev) {
+        let params = ev || window.event;
+        params.preventDefault();
+        
+        if (this.isAnimating) return; // Prevent new zoom while animating
+        
+        let delta = -params.deltaY / 40;
+        let ratio = delta < 0 ? -0.1 : 0.1; // Adjust zoom in/out
+        
+        this.Zoom(ratio);
+    }
+    
+    SmoothZoom(direction, move) {
+        if (this.isAnimating) return;
+        
+        this.isAnimating = true;
+        const stepCount = 30; // Number of steps for animation
+        const steps = TweenCoord3D(this.camera.eye, this.camera.eye.Clone().Offset(direction, move), stepCount, ParabolicTweenFunction);
+        
+        const Step = (obj, steps, count, index) => {
+            obj.camera.eye = steps[index];
+            obj.Update();
+        
+            if (index < count - 1) {
+                requestAnimationFrame(() => Step(obj, steps, count, index + 1));
+            } else {
+                obj.isAnimating = false; // Reset animation flag only after the last step
+            }
+        };
+        
+        requestAnimationFrame(() => Step(this, steps, stepCount, 0));
+    }
+    
     Zoom(ratio) {
+        if (this.isAnimating) return;
+    
         let direction = SubCoord3D(this.camera.center, this.camera.eye);
         let distance = direction.Length();
         let move = distance * ratio;
-        this.camera.eye.Offset(direction, move);
-    }
-
-    Zoomz(ratio) {
-        let direction = SubCoord3D(this.camera.center, this.camera.eye);
-        let move = this.distance * ratio;
-
-        // Calculate the new potential distance
-        let newDistance = this.distance - move;
-
-        // Clamp the distance to not go below minimumDistance
-        if (newDistance < this.minimumDistance) {
-            move = this.distance - this.minimumDistance; // Adjust move to stop at min distance
+    
+        // Ensure the new minimum distance accounts for bounding sphere size
+        let effectiveMinDistance = Math.max(this.minimumDistance, this.minimumDistanceInit); 
+    
+        if (distance - move <= effectiveMinDistance) {
+            move = distance - effectiveMinDistance;
+            //if (move <= 0) return; // Prevent zooming in too much
         }
-
-        this.camera.eye.Offset(direction, move);
-        this.distance -= move; // Update distance correctly
-        this.Update();
+    
+        if (Math.abs(move) > 0.0001) {
+            this.camera.eye.Offset(direction, move);
+            this.Update();
+        }
     }
-
+    
+    UpdateZoomLimit(boundingSphere) {
+        let sphereCenter = boundingSphere.center;
+        let sphereRadius = boundingSphere.radius;
+    
+        // Update the minimum distance based on the bounding sphere size
+        this.minimumDistance = this.minimumDistanceInit + sphereRadius;
+        
+        let cameraPosition = new THREE.Vector3().copy(this.camera.eye);
+        let directionSub = SubCoord3D(this.camera.center, this.camera.eye);
+        let direction = new THREE.Vector3().subVectors(this.camera.center, cameraPosition).normalize();
+    
+        // Create a ray from the camera position
+        let ray = new THREE.Ray(cameraPosition, direction);
+        let intersectionPoint = new THREE.Vector3();
+    
+        if (!ray.intersectSphere(new THREE.Sphere(sphereCenter, sphereRadius), intersectionPoint)) {
+            console.warn("No intersection with bounding sphere.");
+            return;
+        }
+    
+        // Compute the distance between the camera and the intersection
+        let intersectionDistance = cameraPosition.distanceTo(intersectionPoint);
+        console.log("intersectionDistance: " + intersectionDistance);
+    
+        // Move camera back if too close
+        if (intersectionDistance < this.minimumDistance) {
+            console.log("Camera is too close! Adjusting...");
+            let move = intersectionDistance - this.minimumDistance;
+            this.SmoothZoom(directionSub, move);
+        }
+    }
+       
     setMinimumDistance(minDistance) {
         this.minimumDistance = minDistance;
     }
@@ -547,4 +601,16 @@ export class Navigation {
             this.onContext(globalCoords, localCoords);
         }
     }
+}
+
+function LinearTweenFunction(t) {
+    return t;
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
 }

@@ -150,7 +150,9 @@ export class ThreeMaterialHandler
 			opacity : material.opacity,
 			transparent : material.transparent,
 			alphaTest : material.alphaTest,
-			side : THREE.DoubleSide
+			side : THREE.DoubleSide,
+			roughness: material.roughness || 0.5,
+			metalness: material.metalness || 0.5
 		};
 
 		if (this.conversionParams.forceMediumpForMaterials) {
@@ -171,6 +173,32 @@ export class ThreeMaterialHandler
 					threeMaterial.specularMap = threeTexture;
 				});
 			}
+
+			// Load and assign textures supported by MeshPhongMaterial
+			this.LoadFaceTexture (threeMaterial, material.diffuseMap, (threeTexture) => {
+				if (!material.multiplyDiffuseMap) {
+					threeMaterial.color.setRGB (1.0, 1.0, 1.0);
+				}
+				threeMaterial.map = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.bumpMap, (threeTexture) => {
+				threeMaterial.bumpMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.normalMap, (threeTexture) => {
+				threeMaterial.normalMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.emissiveMap, (threeTexture) => {
+				threeMaterial.emissiveMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.displacementMap, (threeTexture) => {
+				threeMaterial.displacementMap = threeTexture;
+				});
+			this.LoadFaceTexture(threeMaterial, material.alphaMap, (threeTexture) => {
+				threeMaterial.alphaMap = threeTexture;
+			});
+			this.LoadFaceTexture(threeMaterial, material.envMap, (threeTexture) => {
+				threeMaterial.envMap = threeTexture;
+			});
 		} else if (this.shadingType === ShadingType.Physical) {
 			threeMaterial = new THREE.MeshStandardMaterial (materialParams);
 			if (material.type === MaterialType.Physical) {
@@ -183,26 +211,39 @@ export class ThreeMaterialHandler
 					threeMaterial.roughnessMap = threeTexture;
 				});
 			}
+
+			// Load and assign all possible PBR textures
+			this.LoadFaceTexture (threeMaterial, material.diffuseMap, (threeTexture) => {
+				if (!material.multiplyDiffuseMap) {
+					threeMaterial.color.setRGB (1.0, 1.0, 1.0);
+				}
+				threeMaterial.map = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.bumpMap, (threeTexture) => {
+				threeMaterial.bumpMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.normalMap, (threeTexture) => {
+				threeMaterial.normalMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.metalnessMap, (threeTexture) => {
+				threeMaterial.metalnessMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.roughnessMap, (threeTexture) => {
+				threeMaterial.roughnessMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.emissiveMap, (threeTexture) => {
+				threeMaterial.emissiveMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.aoMap, (threeTexture) => {
+				threeMaterial.aoMap = threeTexture;
+			});
+			this.LoadFaceTexture (threeMaterial, material.displacementMap, (threeTexture) => {
+				threeMaterial.displacementMap = threeTexture;
+			});
 		}
 
 		let emissiveColor = ConvertColorToThreeColor (material.emissive);
 		threeMaterial.emissive = emissiveColor;
-
-		this.LoadFaceTexture (threeMaterial, material.diffuseMap, (threeTexture) => {
-			if (!material.multiplyDiffuseMap) {
-				threeMaterial.color.setRGB (1.0, 1.0, 1.0);
-			}
-			threeMaterial.map = threeTexture;
-		});
-		this.LoadFaceTexture (threeMaterial, material.bumpMap, (threeTexture) => {
-			threeMaterial.bumpMap = threeTexture;
-		});
-		this.LoadFaceTexture (threeMaterial, material.normalMap, (threeTexture) => {
-			threeMaterial.normalMap = threeTexture;
-		});
-		this.LoadFaceTexture (threeMaterial, material.emissiveMap, (threeTexture) => {
-			threeMaterial.emissiveMap = threeTexture;
-		});
 
 		if (material.source !== MaterialSource.Model) {
 			threeMaterial.userData.source = material.source;
@@ -234,10 +275,8 @@ export class ThreeMaterialHandler
 		return threeMaterial;
 	}
 
-	LoadFaceTexture (threeMaterial, texture, onTextureLoaded)
-	{
-		function SetTextureParameters (texture, threeTexture)
-		{
+	LoadFaceTexture(threeMaterial, texture, onTextureLoaded) {
+		function SetTextureParameters(texture, threeTexture) {
 			threeTexture.wrapS = THREE.RepeatWrapping;
 			threeTexture.wrapT = THREE.RepeatWrapping;
 			threeTexture.rotation = texture.rotation;
@@ -246,29 +285,30 @@ export class ThreeMaterialHandler
 			threeTexture.repeat.x = texture.scale.x;
 			threeTexture.repeat.y = texture.scale.y;
 		}
-
-		if (texture === null || !texture.IsValid ()) {
+	
+		if (!texture || !texture.IsValid()) {
 			return;
 		}
-		let loader = new THREE.TextureLoader ();
-		this.stateHandler.OnTextureNeeded ();
+	
+		let loader = new THREE.TextureLoader();
+		this.stateHandler.OnTextureNeeded();
 		let textureObjectUrl = null;
 		if (texture.mimeType !== null) {
-			textureObjectUrl = CreateObjectUrlWithMimeType (texture.buffer, texture.mimeType);
+			textureObjectUrl = CreateObjectUrlWithMimeType(texture.buffer, texture.mimeType);
 		} else {
-			textureObjectUrl = CreateObjectUrl (texture.buffer);
+			textureObjectUrl = CreateObjectUrl(texture.buffer);
 		}
-		this.conversionOutput.objectUrls.push (textureObjectUrl);
-		loader.load (textureObjectUrl,
+		this.conversionOutput.objectUrls.push(textureObjectUrl);
+		loader.load(textureObjectUrl,
 			(threeTexture) => {
-				SetTextureParameters (texture, threeTexture);
+				SetTextureParameters(texture, threeTexture);
 				threeMaterial.needsUpdate = true;
-				onTextureLoaded (threeTexture);
-				this.stateHandler.OnTextureLoaded ();
+				onTextureLoaded(threeTexture);
+				this.stateHandler.OnTextureLoaded();
 			},
 			null,
 			(err) => {
-				this.stateHandler.OnTextureLoaded ();
+				this.stateHandler.OnTextureLoaded();
 			}
 		);
 	}
