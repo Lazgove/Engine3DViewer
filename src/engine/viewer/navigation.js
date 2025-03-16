@@ -307,27 +307,35 @@ export class Navigation {
         this.Update();
     }
 
-    GetFitToSphereCamera(center, radius) {
-        if (IsZero(radius)) {
-            return null;
+    GetFitToSphereCamera(center, radius, init = false) {
+        if (IsZero(radius)) return null;
+    
+        const fitCamera = this.camera.Clone();
+        const centerEyeDirection = SubCoord3D(fitCamera.eye, center).Normalize();
+        const aspectRatio = this.canvas.width / this.canvas.height;
+        const fieldOfView = (this.camera.fov / 2) * (aspectRatio < 1 ? aspectRatio : 1);
+        const distance = radius / Math.sin(fieldOfView * DegRad);
+        
+        const currentDistance = this.GetCameraDistanceFromCenter(center);
+        console.log(`distance: ${distance}, minimumDistance: ${this.minimumDistance}, currentCamera: ${currentDistance}`);
+    
+        if (init) {
+            this.minimumDistanceInit = this.minimumDistance = distance;
         }
-
-        let fitCamera = this.camera.Clone();
-
-        let offsetToOrigo = SubCoord3D(fitCamera.center, center);
-        fitCamera.eye = SubCoord3D(fitCamera.eye, offsetToOrigo);
-        fitCamera.center = center.Clone();
-
-        let centerEyeDirection = SubCoord3D(fitCamera.eye, fitCamera.center).Normalize();
-        let fieldOfView = this.camera.fov / 2.0;
-        if (this.canvas.width < this.canvas.height) {
-            fieldOfView = fieldOfView * this.canvas.width / this.canvas.height;
+    
+        if (distance >= currentDistance) {
+            fitCamera.eye = fitCamera.center.Clone().Offset(centerEyeDirection, distance);
+            this.minimumDistance = distance;
+            return fitCamera;
         }
-        let distance = radius / Math.sin(fieldOfView * DegRad);
-
-        fitCamera.eye = fitCamera.center.Clone().Offset(centerEyeDirection, distance);
-
-        return fitCamera;
+    
+        this.minimumDistance = distance;
+        return this.camera;
+    }
+    
+    GetCameraDistanceFromCenter(center) {
+        return new THREE.Vector3(this.camera.eye.x, this.camera.eye.y, this.camera.eye.z)
+            .distanceTo(new THREE.Vector3(center.x, center.y, center.z));
     }
 
     OnMouseDown(ev) {
@@ -527,11 +535,12 @@ export class Navigation {
         let distance = direction.Length();
         let move = distance * ratio;
     
-        // Ensure the new minimum distance accounts for bounding sphere size
-        let effectiveMinDistance = Math.max(this.minimumDistance, this.minimumDistanceInit); 
+        // // Ensure the new minimum distance accounts for bounding sphere size
+        // let effectiveMinDistance = Math.max(this.minimumDistance, this.minimumDistanceInit); 
     
-        if (distance - move <= effectiveMinDistance) {
-            move = distance - effectiveMinDistance;
+        if (distance - move <= this.minimumDistance) {
+            console.log("zoom min dista: ", distance);
+            move = distance - this.minimumDistance;
             //if (move <= 0) return; // Prevent zooming in too much
         }
     
@@ -540,6 +549,7 @@ export class Navigation {
             this.Update();
         }
     }
+    
     
     UpdateZoomLimit(boundingSphere) {
         let sphereCenter = boundingSphere.center;
@@ -572,6 +582,7 @@ export class Navigation {
             this.SmoothZoom(directionSub, move);
         }
     }
+    
        
     setMinimumDistance(minDistance) {
         this.minimumDistance = minDistance;

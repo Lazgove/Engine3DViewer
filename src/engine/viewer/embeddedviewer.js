@@ -165,7 +165,7 @@ export class EmbeddedViewer
                 } else {
                     this.viewer.SetUpVector(Direction.Y, false);
                     // Place the initial camera to the bounding sphere
-                    this.viewer.FitSphereToWindow(boundingSphere, false);
+                    this.viewer.FitSphereToWindow(boundingSphere, false, 0, true);
                 }
 
                 this.model = importResult.model;

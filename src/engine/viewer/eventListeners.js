@@ -1,5 +1,5 @@
 export function setupEventListeners(viewer) {
-    const resetButton = document.getElementById('resetButton');
+    const resetButton = document.getElementById('reset-button');
     const autoRotateCheckbox = document.getElementById('auto-rotate');
     const cotationCheckbox = document.getElementById('cotationCheckbox');
     const blackModeCheckbox = document.getElementById('blackMode');
@@ -93,7 +93,6 @@ export function setupEventListeners(viewer) {
         const scene = viewer.GetViewer().GetScene();
         scene.traverse((child) => {
             if (child.userData.isAnnotation) {
-                console.log("cihiuheuihfuiehuifr");
                 if (cotationCheckbox.checked) {
                     child.visible = true;
                 } else {
@@ -124,7 +123,7 @@ export function setupEventListeners(viewer) {
         slider.value = 0;
         console.log(0);
         updateSliderProgress(slider);
-        viewer.GetViewer().ExplodeModel(0);
+        viewer.GetViewer().ExplodeModel(0, 0.5, viewer.GetViewer());
     });
 
     recenterButton.addEventListener('click', function () {
@@ -138,14 +137,18 @@ export function setupEventListeners(viewer) {
         console.log("Slider initialized to 0");
     };
 
-    // Update the hidden slider value and trigger the function
-    slider.addEventListener("input", function() {
-        const value = this.value;
-        console.log("value");
-        console.log(value);
-        updateSliderProgress(this);
-        viewer.GetViewer().ExplodeModel(value, 0.5);
+    slider.addEventListener("input", (event) => {
+        const factor = event.target.value;
+        viewer.GetViewer().ExplodeModel(factor, 0.3, viewer.GetViewer()); // Lower duration for a smooth effect
     });
+    
+
+    // // Update the hidden slider value and trigger the function
+    // slider.addEventListener("input", function() {
+    //     const value = this.value;
+    //     updateSliderProgress(this);
+    //     viewer.GetViewer().ExplodeModel(value, 0.5, viewer.GetViewer());
+    // });
 
     // Function to update the slider progress color
     function updateSliderProgress(slider) {

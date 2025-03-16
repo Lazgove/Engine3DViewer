@@ -102789,17 +102789,20 @@ var EmbeddedViewer = /*#__PURE__*/function () {
             }
           });
           _this2.canvas.style.display = 'inherit';
+          // Set the main object and the minimum distance of the camera
           _this2.viewer.SetMainObject(threeObject);
           var boundingSphere = _this2.viewer.GetBoundingSphere(function (meshUserData) {
             return true;
           });
+          _this2.viewer.SetBoudingSphere(boundingSphere);
           _this2.viewer.AdjustClippingPlanesToSphere(boundingSphere);
           if (_this2.parameters.camera) {
             console.log(_this2.parameters.camera);
             _this2.viewer.SetCamera(_this2.parameters.camera);
           } else {
             _this2.viewer.SetUpVector(_geometry_geometry_js__WEBPACK_IMPORTED_MODULE_1__.Direction.Y, false);
-            _this2.viewer.FitSphereToWindow(boundingSphere, false);
+            // Place the initial camera to the bounding sphere
+            _this2.viewer.FitSphereToWindow(boundingSphere, false, 0, true);
           }
           _this2.model = importResult.model;
           if (_this2.parameters.onModelLoaded) {
@@ -102991,7 +102994,7 @@ function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyri
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function setupEventListeners(viewer) {
-  var resetButton = document.getElementById('resetButton');
+  var resetButton = document.getElementById('reset-button');
   var autoRotateCheckbox = document.getElementById('auto-rotate');
   var cotationCheckbox = document.getElementById('cotationCheckbox');
   var blackModeCheckbox = document.getElementById('blackMode');
@@ -103095,7 +103098,6 @@ function setupEventListeners(viewer) {
     var scene = viewer.GetViewer().GetScene();
     scene.traverse(function (child) {
       if (child.userData.isAnnotation) {
-        console.log("cihiuheuihfuiehuifr");
         if (cotationCheckbox.checked) {
           child.visible = true;
         } else {
@@ -103124,7 +103126,7 @@ function setupEventListeners(viewer) {
     slider.value = 0;
     console.log(0);
     updateSliderProgress(slider);
-    viewer.GetViewer().ExplodeModel(0);
+    viewer.GetViewer().ExplodeModel(0, 0.5, viewer.GetViewer());
   });
   recenterButton.addEventListener('click', function () {
     viewer.GetViewer().RecenterCamera();
@@ -103136,15 +103138,17 @@ function setupEventListeners(viewer) {
     updateSliderProgress(slider);
     console.log("Slider initialized to 0");
   };
-
-  // Update the hidden slider value and trigger the function
-  slider.addEventListener("input", function () {
-    var value = this.value;
-    console.log("value");
-    console.log(value);
-    updateSliderProgress(this);
-    viewer.GetViewer().ExplodeModel(value, 0.5);
+  slider.addEventListener("input", function (event) {
+    var factor = event.target.value;
+    viewer.GetViewer().ExplodeModel(factor, 0.3, viewer.GetViewer()); // Lower duration for a smooth effect
   });
+
+  // // Update the hidden slider value and trigger the function
+  // slider.addEventListener("input", function() {
+  //     const value = this.value;
+  //     updateSliderProgress(this);
+  //     viewer.GetViewer().ExplodeModel(value, 0.5, viewer.GetViewer());
+  // });
 
   // Function to update the slider progress color
   function updateSliderProgress(slider) {
@@ -103512,21 +103516,30 @@ var Navigation = /*#__PURE__*/function () {
   }, {
     key: "GetFitToSphereCamera",
     value: function GetFitToSphereCamera(center, radius) {
-      if ((0,_geometry_geometry_js__WEBPACK_IMPORTED_MODULE_2__.IsZero)(radius)) {
-        return null;
-      }
+      var init = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+      if ((0,_geometry_geometry_js__WEBPACK_IMPORTED_MODULE_2__.IsZero)(radius)) return null;
       var fitCamera = this.camera.Clone();
-      var offsetToOrigo = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(fitCamera.center, center);
-      fitCamera.eye = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(fitCamera.eye, offsetToOrigo);
-      fitCamera.center = center.Clone();
-      var centerEyeDirection = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(fitCamera.eye, fitCamera.center).Normalize();
-      var fieldOfView = this.camera.fov / 2.0;
-      if (this.canvas.width < this.canvas.height) {
-        fieldOfView = fieldOfView * this.canvas.width / this.canvas.height;
-      }
+      var centerEyeDirection = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(fitCamera.eye, center).Normalize();
+      var aspectRatio = this.canvas.width / this.canvas.height;
+      var fieldOfView = this.camera.fov / 2 * (aspectRatio < 1 ? aspectRatio : 1);
       var distance = radius / Math.sin(fieldOfView * _geometry_geometry_js__WEBPACK_IMPORTED_MODULE_2__.DegRad);
-      fitCamera.eye = fitCamera.center.Clone().Offset(centerEyeDirection, distance);
-      return fitCamera;
+      var currentDistance = this.GetCameraDistanceFromCenter(center);
+      console.log("distance: ".concat(distance, ", minimumDistance: ").concat(this.minimumDistance, ", currentCamera: ").concat(currentDistance));
+      if (init) {
+        this.minimumDistanceInit = this.minimumDistance = distance;
+      }
+      if (distance >= currentDistance) {
+        fitCamera.eye = fitCamera.center.Clone().Offset(centerEyeDirection, distance);
+        this.minimumDistance = distance;
+        return fitCamera;
+      }
+      this.minimumDistance = distance;
+      return this.camera;
+    }
+  }, {
+    key: "GetCameraDistanceFromCenter",
+    value: function GetCameraDistanceFromCenter(center) {
+      return new three__WEBPACK_IMPORTED_MODULE_6__.Vector3(this.camera.eye.x, this.camera.eye.y, this.camera.eye.z).distanceTo(new three__WEBPACK_IMPORTED_MODULE_6__.Vector3(center.x, center.y, center.z));
     }
   }, {
     key: "OnMouseDown",
@@ -103719,10 +103732,12 @@ var Navigation = /*#__PURE__*/function () {
       var distance = direction.Length();
       var move = distance * ratio;
 
-      // Ensure the new minimum distance accounts for bounding sphere size
-      var effectiveMinDistance = Math.max(this.minimumDistance, this.minimumDistanceInit);
-      if (distance - move <= effectiveMinDistance) {
-        move = distance - effectiveMinDistance;
+      // // Ensure the new minimum distance accounts for bounding sphere size
+      // let effectiveMinDistance = Math.max(this.minimumDistance, this.minimumDistanceInit); 
+
+      if (distance - move <= this.minimumDistance) {
+        console.log("zoom min dista: ", distance);
+        move = distance - this.minimumDistance;
         //if (move <= 0) return; // Prevent zooming in too much
       }
       if (Math.abs(move) > 0.0001) {
@@ -104310,6 +104325,8 @@ var Viewer = /*#__PURE__*/function () {
       this.scene = new three__WEBPACK_IMPORTED_MODULE_10__.Scene();
       this.mainModel = new _viewermodel_js__WEBPACK_IMPORTED_MODULE_8__.ViewerMainModel(this.scene);
       this.extraModel = new _viewermodel_js__WEBPACK_IMPORTED_MODULE_8__.ViewerModel(this.scene);
+      this.activeTweens = new Map(); // Store active animations per mesh
+
       this.InitNavigation();
       this.InitShading();
       this.InitMasks();
@@ -104462,18 +104479,11 @@ var Viewer = /*#__PURE__*/function () {
     key: "FitSphereToWindow",
     value: function FitSphereToWindow(boundingSphere, animation) {
       var duration = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
-      var centered = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
-      if (boundingSphere === null) {
-        return;
-      }
-      var center;
-      if (!centered) {
-        center = new _geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_0__.Coord3D(boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z);
-      } else {
-        center = new _geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_0__.Coord3D(0, 0, 0);
-      }
+      var init = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
+      if (!boundingSphere) return;
+      var center = init ? new _geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_0__.Coord3D(boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z) : new _geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_0__.Coord3D(0, 0, 0);
       var radius = boundingSphere.radius;
-      var newCamera = this.navigation.GetFitToSphereCamera(center, radius);
+      var newCamera = this.navigation.GetFitToSphereCamera(center, radius, init);
       this.defaultCameraParameters = newCamera.Clone();
       this.navigation.MoveCamera(newCamera, animation ? this.settings.animationSteps : duration);
     }
@@ -104591,18 +104601,40 @@ var Viewer = /*#__PURE__*/function () {
       var _this2 = this;
       var shadingType = GetShadingTypeOfObject(object);
       this.mainModel.SetMainObject(object);
+      console.log("mainModel", this.mainModel);
       this.shadingModel.SetShadingType(shadingType);
 
       // Store the initial camera view
       this.initialCameraView = this.navigation.GetCamera().Clone();
 
+      // Create a new group and set its position to (0, 0, 0)
+      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(object);
+      var center = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var group = new three__WEBPACK_IMPORTED_MODULE_10__.Group();
+      group.position.set(0, 0, 0);
+      this.scene.add(group);
+      group.name = 'mainGroup';
+
+      // Adjust the position of the mainObject and add it to the group
+      object.position.sub(center);
+      group.add(object);
+      this.isAnimating = true;
+      this.mainObject = group;
+      var newBoundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(object);
+      this.boundingBox = newBoundingBox;
+      var radius = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length() / 2;
+
+      // Create the bounding sphere
+      this.centerBbox = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(0, 0, 0);
+      this.boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere(this.centerBbox, radius);
+      this.size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+
       // Store initial positions and generate evenly spaced direction vectors
       this.initialPositions = [];
       this.directionVectors = [];
       var numChildren = 0;
-      object.traverse(function (child) {
-        if (child.isMesh) {
-          console.log(child);
+      this.mainObject.traverse(function (child) {
+        if (child.isMesh && !child.userData.isAnnotation) {
           numChildren++;
         }
       });
@@ -104618,38 +104650,19 @@ var Viewer = /*#__PURE__*/function () {
         this.directionVectors.push(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(x, y, z).normalize());
       }
       var index = 0;
-      object.traverse(function (child) {
-        if (child.isMesh) {
+      this.mainObject.traverse(function (child) {
+        if (child.isMesh && !child.userData.isAnnotation) {
           _this2.initialPositions.push(child.position.clone());
           index++;
         }
       });
-
-      // Create a new group and set its position to (0, 0, 0)
-      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(object);
-      var center = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-      var group = new three__WEBPACK_IMPORTED_MODULE_10__.Group();
-      group.position.set(0, 0, 0);
-      this.scene.add(group);
-      group.name = 'mainGroup';
-
-      // Adjust the position of the mainObject and add it to the group
-      object.position.sub(center);
-      group.add(object);
-      this.isAnimating = true;
-      this.mainObject = group;
-      this.boundingBox = boundingBox;
-      var radius = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length() / 2;
-
-      // Create the bounding sphere
-      this.centerBbox = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(0, 0, 0);
-      this.boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere(this.centerBbox, radius);
-      this.size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-      this.navigation.minimumDistanceInit = this.boundingSphere.radius * 2;
+      console.log("Initial Positions:", this.initialPositions);
+      console.log("Direction Vectors:", this.directionVectors);
 
       // Setup three-point lighting
       this.SetupThreePointLighting();
       this.CreateBoundingBoxMesh();
+      this.CreateBoundingBoxesAndAnnotations();
       this.Render();
     }
   }, {
@@ -104908,20 +104921,17 @@ var Viewer = /*#__PURE__*/function () {
     value: function ExplodeModel(factor) {
       var _this7 = this;
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.5;
-      console.log("called");
       if (!this.mainObject) {
         console.error("Main object is not defined.");
         return;
       }
 
       // Define minimum and maximum explosion multipliers
-      var minMultiplier = 0.2; // Prevents tiny explosions
-      var maxMultiplier = 1.5; // Prevents excessive explosions
+      var minMultiplier = 0.2;
+      var maxMultiplier = 1.5;
 
       // Compute max explosion distance and clamp it
-      var maxExplosionDistance = three__WEBPACK_IMPORTED_MODULE_10__.MathUtils.clamp(this.boundingSphere.radius * 1.5,
-      // Default scaling
-      this.boundingSphere.radius * minMultiplier, this.boundingSphere.radius * maxMultiplier);
+      var maxExplosionDistance = three__WEBPACK_IMPORTED_MODULE_10__.MathUtils.clamp(this.boundingSphere.radius * 1.5, this.boundingSphere.radius * minMultiplier, this.boundingSphere.radius * maxMultiplier);
 
       // Scale explosion distance based on slider factor (0 to 100)
       var explosionDistance = factor / 100 * maxExplosionDistance;
@@ -104932,43 +104942,72 @@ var Viewer = /*#__PURE__*/function () {
       var index = 0;
       var totalMeshes = 0;
       var completedMeshes = 0;
+      var animations = [];
       this.mainObject.traverse(function (child) {
-        if (child.isMesh) {
+        if (child.userData.isAnnotation) {
+          console.log("Annotation found, skipping:", child.name);
+          return; // Skip annotations entirely
+        }
+        if (child.isMesh && !child.userData.isAnnotation) {
+          console.log("Processing mesh:", child.name, "Index:", index);
+          if (index >= _this7.directionVectors.length) {
+            console.log("Index ".concat(index, " exceeds directionVectors array length (").concat(_this7.directionVectors.length, ")"));
+            return; // Stop processing further to prevent errors
+          }
           totalMeshes++;
-          if (index < _this7.directionVectors.length) {
-            var direction = _this7.directionVectors[index].clone();
-            var newPosition = _this7.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
-
-            // Animate each mesh's position with GSAP
+          var direction = _this7.directionVectors[index].clone();
+          var newPosition = _this7.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
+          gsap__WEBPACK_IMPORTED_MODULE_16__["default"].killTweensOf(child.position);
+          animations.push(new Promise(function (resolve) {
             gsap__WEBPACK_IMPORTED_MODULE_16__["default"].to(child.position, {
               x: newPosition.x,
               y: newPosition.y,
               z: newPosition.z,
               duration: duration,
               ease: "power2.out",
-              onComplete: function onComplete() {
-                completedMeshes++;
-                if (completedMeshes === totalMeshes) {
-                  // All animations are complete, now update the bounding box and zoom limit
-                  console.log("All animations are complete");
-                  _this7.UpdateCameraAndControls();
-                }
-              }
+              onComplete: resolve
             });
-            index++;
-          } else {
-            console.error("Index ${index} exceeds directionVectors array length");
-          }
+          }));
+          index++; // Only increment if we actually move the mesh
         }
       });
+      Promise.all(animations).then(function () {
+        console.log("All animations are complete");
+        _this7.OptimizedCameraUpdate();
+      });
+    }
 
-      // You can still update the camera before the animations finish, but bounding box recalculation and zoom limit should wait
-      // this.UpdateCameraAndControls(); // This line can be removed if you want to defer the update.
+    // Optimized camera update with throttling
+  }, {
+    key: "OptimizedCameraUpdate",
+    value: function OptimizedCameraUpdate() {
+      var _this8 = this;
+      if (this.cameraUpdatePending) return;
+      this.cameraUpdatePending = true;
+      setTimeout(function () {
+        _this8.UpdateCameraAndControls();
+        _this8.cameraUpdatePending = false;
+      }, 100);
+    }
+
+    // Throttled function to prevent excessive camera updates
+  }, {
+    key: "ThrottledCameraUpdate",
+    value: function ThrottledCameraUpdate() {
+      var _this9 = this;
+      if (!this.cameraUpdatePending) {
+        this.cameraUpdatePending = true;
+        requestAnimationFrame(function () {
+          _this9.UpdateCameraAndControls();
+          _this9.cameraUpdatePending = false;
+        });
+      }
     }
   }, {
     key: "CreateBoundingBoxMesh",
     value: function CreateBoundingBoxMesh() {
       var centerBbox = this.boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      console.log("bounding box", this.boundingBox);
       var size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       var boxGeometry = new three__WEBPACK_IMPORTED_MODULE_10__.BoxGeometry(1, 1, 1);
       var boxMaterial = new three__WEBPACK_IMPORTED_MODULE_10__.LineBasicMaterial({
@@ -104984,15 +105023,17 @@ var Viewer = /*#__PURE__*/function () {
         boundingBoxHelper.visible = false;
       }
       boundingBoxHelper.userData.isAnnotation = true;
-      this.mainObject.add(boundingBoxHelper);
-      boundingBoxHelper.position.set(centerBbox.x, centerBbox.y, centerBbox.z);
+      var mainGroup = this.scene.getObjectByName('mainGroup');
+      mainGroup.add(boundingBoxHelper);
+      //boundingBoxHelper.position.set(0, 0, 0);
     }
   }, {
     key: "CreateBoundingBoxesAndAnnotations",
     value: function CreateBoundingBoxesAndAnnotations() {
-      var mainObject = this.mainModel.GetMainObject().GetRootObject();
-      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
-      var objectHeight = (0,_threejs_threeutils_js__WEBPACK_IMPORTED_MODULE_3__.GetObjectHeight)(mainObject);
+      //const mainObject = this.mainModel.GetMainObject().GetRootObject();
+      var boundingBox = this.boundingBox;
+      console.log("bounding box annotations", boundingBox);
+      var objectHeight = (0,_threejs_threeutils_js__WEBPACK_IMPORTED_MODULE_3__.GetObjectHeight)(this.mainObject);
       var size = boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       this.CreateDoubleSidedArrow(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.min.x, boundingBox.min.y, boundingBox.min.z), new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z), "".concat(size.x.toFixed(2), " cm"), objectHeight);
       this.CreateDoubleSidedArrow(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z), new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.max.y, boundingBox.min.z), "".concat(size.y.toFixed(2), " cm"), objectHeight);
@@ -105003,27 +105044,29 @@ var Viewer = /*#__PURE__*/function () {
     value: function CreateDoubleSidedArrow(startPoint, endPoint, label, objectHeight) {
       var color = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0x37b6ff;
       var textSizePercent = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : 0.07;
-      var mainObject = this.mainModel.GetMainObject().GetRootObject();
+      var mainGroup = this.scene.getObjectByName('mainGroup');
       var direction = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3().subVectors(endPoint, startPoint).normalize();
       var reverseDirection = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3().subVectors(startPoint, endPoint).normalize();
       var arrowLength = startPoint.distanceTo(endPoint);
       var arrowHelper1 = new three__WEBPACK_IMPORTED_MODULE_10__.ArrowHelper(direction, startPoint, arrowLength, color);
       var textMeshes = [];
       arrowHelper1.userData.isAnnotation = true;
+      arrowHelper1.name = 'arrowHelper1';
       if (cotationCheckbox.checked) {
         arrowHelper1.visible = true;
       } else {
         arrowHelper1.visible = false;
       }
-      mainObject.add(arrowHelper1);
+      mainGroup.add(arrowHelper1);
       var arrowHelper2 = new three__WEBPACK_IMPORTED_MODULE_10__.ArrowHelper(reverseDirection, endPoint, arrowLength, color);
       arrowHelper2.userData.isAnnotation = true;
+      arrowHelper2.name = 'arrowHelper2';
       if (cotationCheckbox.checked) {
         arrowHelper2.visible = true;
       } else {
         arrowHelper2.visible = false;
       }
-      mainObject.add(arrowHelper2);
+      mainGroup.add(arrowHelper2);
       var loader = new three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__.FontLoader();
       loader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', function (font) {
         var textSize = objectHeight * textSizePercent;
@@ -105041,6 +105084,7 @@ var Viewer = /*#__PURE__*/function () {
         textMesh.position.copy(midPoint);
         textMesh.userData.isAnnotation = true;
         textMesh.userData.viewCam = true;
+        textMesh.name = 'textMesh';
         var cotationCheckbox = document.getElementById('cotationCheckbox');
         if (cotationCheckbox.checked) {
           textMesh.visible = true;
@@ -105048,7 +105092,7 @@ var Viewer = /*#__PURE__*/function () {
           textMesh.visible = false;
         }
         textMeshes.push(textMesh);
-        mainObject.add(textMesh);
+        mainGroup.add(textMesh);
       }, undefined, function (error) {
         console.error('Error loading font:', error);
       });
@@ -105075,13 +105119,12 @@ var Viewer = /*#__PURE__*/function () {
         this.camera.getWorldDirection(cameraDirection);
         this.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, intersectionPoint);
         if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
-          var parentInverseMatrix = new three__WEBPACK_IMPORTED_MODULE_10__.Matrix4().copy(this.scene.getObjectByName('rootScene').matrixWorld).invert();
+          var parentInverseMatrix = new three__WEBPACK_IMPORTED_MODULE_10__.Matrix4().copy(this.scene.getObjectByName('mainGroup').matrixWorld).invert();
           var localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
           var localObjectPosition = this.selectedObject.position.clone();
           this.dragOffset.copy(localObjectPosition).sub(localIntersectionPoint);
         }
         this.navigation.SetNavigationMode(0);
-        console.log(this.navigation);
         //this.controls.enabled = false;
       }
     }
@@ -105094,7 +105137,7 @@ var Viewer = /*#__PURE__*/function () {
       if (this.selectedObject) {
         this.raycaster.setFromCamera(this.navigation.mouse, this.camera);
         if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
-          var parentInverseMatrix = new three__WEBPACK_IMPORTED_MODULE_10__.Matrix4().copy(this.scene.getObjectByName('rootScene').matrixWorld).invert();
+          var parentInverseMatrix = new three__WEBPACK_IMPORTED_MODULE_10__.Matrix4().copy(this.scene.getObjectByName('mainGroup').matrixWorld).invert();
           var localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
           var newPosition = localIntersectionPoint.add(this.dragOffset);
           var mainObject = this.mainModel.GetMainObject().GetRootObject();
@@ -105152,10 +105195,10 @@ var Viewer = /*#__PURE__*/function () {
       var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(this.mainObject, true);
       var boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere();
       boundingBox.getBoundingSphere(boundingSphere);
-      this.FitSphereToWindow(boundingSphere, false, 30, true);
-      // Update the navigation with the new bounding box
-      //this.navigation.UpdateZoomLimit(boundingSphere);
-      //this.Render();
+      this.FitSphereToWindow(boundingSphere, false, 10, false);
+      // if (boundingSphere.radius < this.navigation.minimumDistance) {
+      //     this.FitSphereToWindow(boundingSphere, false, 30, true), false;
+      // }
     }
   }]);
 }();

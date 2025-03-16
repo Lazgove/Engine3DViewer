@@ -263,6 +263,8 @@ export class Viewer
         this.mainModel = new ViewerMainModel (this.scene);
         this.extraModel = new ViewerModel (this.scene);
 
+        this.activeTweens = new Map(); // Store active animations per mesh
+
         this.InitNavigation ();
         this.InitShading ();
         this.InitMasks ();
@@ -415,24 +417,18 @@ export class Viewer
         this.Render ();
     }
 
-    FitSphereToWindow (boundingSphere, animation, duration=0, centered=false)
-    {
-        if (boundingSphere === null) {
-            return;
-        }
-
-        let center;
-
-        if (!centered) {
-            center = new Coord3D (boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z);
-        } else {
-            center = new Coord3D (0, 0, 0);
-        }
-        let radius = boundingSphere.radius;
-
-        let newCamera = this.navigation.GetFitToSphereCamera (center, radius);
-        this.defaultCameraParameters = newCamera.Clone ();
-        this.navigation.MoveCamera (newCamera, animation ? this.settings.animationSteps : duration);
+    FitSphereToWindow(boundingSphere, animation, duration = 0, init = false) {
+        if (!boundingSphere) return;
+    
+        const center = init 
+            ? new Coord3D(boundingSphere.center.x, boundingSphere.center.y, boundingSphere.center.z) 
+            : new Coord3D(0, 0, 0);
+    
+        const radius = boundingSphere.radius;
+        const newCamera = this.navigation.GetFitToSphereCamera(center, radius, init);
+    
+        this.defaultCameraParameters = newCamera.Clone();
+        this.navigation.MoveCamera(newCamera, animation ? this.settings.animationSteps : duration);
     }
 
     AdjustClippingPlanes ()
@@ -552,19 +548,42 @@ export class Viewer
     SetMainObject(object) {
         const shadingType = GetShadingTypeOfObject(object);
         this.mainModel.SetMainObject(object);
+        console.log("mainModel", this.mainModel);
         this.shadingModel.SetShadingType(shadingType);
     
         // Store the initial camera view
         this.initialCameraView = this.navigation.GetCamera().Clone();
+    
+        // Create a new group and set its position to (0, 0, 0)
+        const boundingBox = new THREE.Box3().setFromObject(object);
+        const center = boundingBox.getCenter(new THREE.Vector3());
+        const group = new THREE.Group();
+        group.position.set(0, 0, 0);
+        this.scene.add(group);
+        group.name = 'mainGroup';
+    
+        // Adjust the position of the mainObject and add it to the group
+        object.position.sub(center);
+        group.add(object);
+    
+        this.isAnimating = true;
+        this.mainObject = group;
+        const newBoundingBox = new THREE.Box3().setFromObject(object);
+        this.boundingBox = newBoundingBox;
+        const radius = this.boundingBox.getSize(new THREE.Vector3()).length() / 2;
+    
+        // Create the bounding sphere
+        this.centerBbox = new THREE.Vector3(0, 0, 0);
+        this.boundingSphere = new THREE.Sphere(this.centerBbox, radius);
+        this.size = this.boundingBox.getSize(new THREE.Vector3());
     
         // Store initial positions and generate evenly spaced direction vectors
         this.initialPositions = [];
         this.directionVectors = [];
     
         let numChildren = 0;
-        object.traverse((child) => {
-            if (child.isMesh) {
-                console.log(child);
+        this.mainObject.traverse((child) => {
+            if (child.isMesh && !child.userData.isAnnotation) {
                 numChildren++;
             }
         });
@@ -582,39 +601,20 @@ export class Viewer
         }
     
         let index = 0;
-        object.traverse((child) => {
-            if (child.isMesh) {
+        this.mainObject.traverse((child) => {
+            if (child.isMesh && !child.userData.isAnnotation) {
                 this.initialPositions.push(child.position.clone());
                 index++;
             }
         });
     
-        // Create a new group and set its position to (0, 0, 0)
-        const boundingBox = new THREE.Box3().setFromObject(object);
-        const center = boundingBox.getCenter(new THREE.Vector3());
-        const group = new THREE.Group();
-        group.position.set(0, 0, 0);
-        this.scene.add(group);
-        group.name = 'mainGroup';
-    
-        // Adjust the position of the mainObject and add it to the group
-        object.position.sub(center);
-        group.add(object);
-    
-        this.isAnimating = true;
-        this.mainObject = group;
-        this.boundingBox = boundingBox;
-        const radius = this.boundingBox.getSize(new THREE.Vector3()).length() / 2;
-    
-        // Create the bounding sphere
-        this.centerBbox = new THREE.Vector3(0, 0, 0);
-        this.boundingSphere = new THREE.Sphere(this.centerBbox, radius);
-        this.size = this.boundingBox.getSize(new THREE.Vector3());
-        this.navigation.minimumDistanceInit = this.boundingSphere.radius * 2;
+        console.log("Initial Positions:", this.initialPositions);
+        console.log("Direction Vectors:", this.directionVectors);
     
         // Setup three-point lighting
         this.SetupThreePointLighting();
         this.CreateBoundingBoxMesh();
+        this.CreateBoundingBoxesAndAnnotations();
         this.Render();
     }
     
@@ -863,19 +863,18 @@ export class Viewer
     }
     
     ExplodeModel(factor, duration = 0.5) {
-        console.log("called");
         if (!this.mainObject) {
             console.error("Main object is not defined.");
             return;
         }
     
         // Define minimum and maximum explosion multipliers
-        const minMultiplier = 0.2;  // Prevents tiny explosions
-        const maxMultiplier = 1.5;  // Prevents excessive explosions
+        const minMultiplier = 0.2;
+        const maxMultiplier = 1.5;
     
         // Compute max explosion distance and clamp it
         const maxExplosionDistance = THREE.MathUtils.clamp(
-            this.boundingSphere.radius * 1.5, // Default scaling
+            this.boundingSphere.radius * 1.5,
             this.boundingSphere.radius * minMultiplier,
             this.boundingSphere.radius * maxMultiplier
         );
@@ -891,46 +890,73 @@ export class Viewer
         let index = 0;
         let totalMeshes = 0;
         let completedMeshes = 0;
+        let animations = [];
     
         this.mainObject.traverse((child) => {
-            if (child.isMesh) {
+            if (child.userData.isAnnotation) {
+                console.log("Annotation found, skipping:", child.name);
+                return; // Skip annotations entirely
+            }
+        
+            if (child.isMesh && !child.userData.isAnnotation) {
+                console.log("Processing mesh:", child.name, "Index:", index);
+        
+                if (index >= this.directionVectors.length) {
+                    console.log(`Index ${index} exceeds directionVectors array length (${this.directionVectors.length})`);
+                    return; // Stop processing further to prevent errors
+                }
+        
                 totalMeshes++;
-    
-                if (index < this.directionVectors.length) {
-                    const direction = this.directionVectors[index].clone();
-                    const newPosition = this.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
-    
-                    // Animate each mesh's position with GSAP
+        
+                const direction = this.directionVectors[index].clone();
+                const newPosition = this.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
+                gsap.killTweensOf(child.position);
+                animations.push(new Promise(resolve => {
                     gsap.to(child.position, {
                         x: newPosition.x,
                         y: newPosition.y,
                         z: newPosition.z,
                         duration: duration,
                         ease: "power2.out",
-                        onComplete: () => {
-                            completedMeshes++;
-                            if (completedMeshes === totalMeshes) {
-                                // All animations are complete, now update the bounding box and zoom limit
-                                console.log("All animations are complete");
-                                this.UpdateCameraAndControls();
-                            }
-                        }
+                        onComplete: resolve
                     });
-                    index++;
-                } else {
-                    console.error("Index ${index} exceeds directionVectors array length");
-                }
+                }));
+        
+                index++; // Only increment if we actually move the mesh
             }
         });
-    
-        // You can still update the camera before the animations finish, but bounding box recalculation and zoom limit should wait
-        // this.UpdateCameraAndControls(); // This line can be removed if you want to defer the update.
+        Promise.all(animations).then(() => {
+            console.log("All animations are complete");
+            this.OptimizedCameraUpdate();
+        });        
+    }
+
+    // Optimized camera update with throttling
+    OptimizedCameraUpdate() {
+        if (this.cameraUpdatePending) return;
+
+        this.cameraUpdatePending = true;
+        setTimeout(() => {
+            this.UpdateCameraAndControls();
+            this.cameraUpdatePending = false;
+        }, 100);
     }
     
+    // Throttled function to prevent excessive camera updates
+    ThrottledCameraUpdate() {
+        if (!this.cameraUpdatePending) {
+            this.cameraUpdatePending = true;
+            requestAnimationFrame(() => {
+                this.UpdateCameraAndControls();
+                this.cameraUpdatePending = false;
+            });
+        }
+    }
     
     CreateBoundingBoxMesh() {
 
         const centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
+        console.log("bounding box", this.boundingBox);
         const size = this.boundingBox.getSize(new THREE.Vector3());
         const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
         const boxMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
@@ -947,17 +973,18 @@ export class Viewer
             boundingBoxHelper.visible = false;
         }
         boundingBoxHelper.userData.isAnnotation = true;
-        this.mainObject.add(boundingBoxHelper);
-        boundingBoxHelper.position.set(centerBbox.x, centerBbox.y, centerBbox.z);
+        const mainGroup = this.scene.getObjectByName('mainGroup');
+        mainGroup.add(boundingBoxHelper);
+        //boundingBoxHelper.position.set(0, 0, 0);
     }
 
     CreateBoundingBoxesAndAnnotations() {
 
-        const mainObject = this.mainModel.GetMainObject().GetRootObject();
-        const boundingBox = new THREE.Box3().setFromObject(mainObject);
-        const objectHeight = GetObjectHeight(mainObject);
+        //const mainObject = this.mainModel.GetMainObject().GetRootObject();
+        const boundingBox = this.boundingBox;
+        console.log("bounding box annotations", boundingBox);
+        const objectHeight = GetObjectHeight(this.mainObject);
         const size = boundingBox.getSize(new THREE.Vector3());
-
         this.CreateDoubleSidedArrow(
             new THREE.Vector3(boundingBox.min.x, boundingBox.min.y, boundingBox.min.z),
             new THREE.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z),
@@ -981,7 +1008,7 @@ export class Viewer
     }
 
     CreateDoubleSidedArrow(startPoint, endPoint, label, objectHeight, color = 0x37b6ff, textSizePercent = 0.07) {
-        const mainObject = this.mainModel.GetMainObject().GetRootObject();
+        const mainGroup = this.scene.getObjectByName('mainGroup');
         const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
         const reverseDirection = new THREE.Vector3().subVectors(startPoint, endPoint).normalize();
         const arrowLength = startPoint.distanceTo(endPoint);
@@ -989,21 +1016,23 @@ export class Viewer
         const textMeshes = [];
 
         arrowHelper1.userData.isAnnotation = true;
+        arrowHelper1.name = 'arrowHelper1';
         if (cotationCheckbox.checked) {
             arrowHelper1.visible = true;
         } else {
             arrowHelper1.visible = false;
         }
-        mainObject.add(arrowHelper1);
+        mainGroup.add(arrowHelper1);
 
         const arrowHelper2 = new THREE.ArrowHelper(reverseDirection, endPoint, arrowLength, color);
         arrowHelper2.userData.isAnnotation = true;
+        arrowHelper2.name = 'arrowHelper2';
         if (cotationCheckbox.checked) {
             arrowHelper2.visible = true;
         } else {
             arrowHelper2.visible = false;
         }
-        mainObject.add(arrowHelper2);
+        mainGroup.add(arrowHelper2);
 
         const loader = new FontLoader();
         loader.load(
@@ -1023,6 +1052,7 @@ export class Viewer
                 textMesh.position.copy(midPoint);
                 textMesh.userData.isAnnotation = true;
                 textMesh.userData.viewCam = true;
+                textMesh.name = 'textMesh';
                 const cotationCheckbox = document.getElementById('cotationCheckbox');
                 if (cotationCheckbox.checked) {
                     textMesh.visible = true;
@@ -1030,7 +1060,7 @@ export class Viewer
                     textMesh.visible = false;
                 }
                 textMeshes.push(textMesh);
-                mainObject.add(textMesh);
+                mainGroup.add(textMesh);
             },
             undefined,
             function (error) {
@@ -1063,14 +1093,13 @@ export class Viewer
             this.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, intersectionPoint);
     
             if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
-                const parentInverseMatrix = new THREE.Matrix4().copy(this.scene.getObjectByName('rootScene').matrixWorld).invert();
+                const parentInverseMatrix = new THREE.Matrix4().copy(this.scene.getObjectByName('mainGroup').matrixWorld).invert();
                 const localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
                 const localObjectPosition = this.selectedObject.position.clone();
     
                 this.dragOffset.copy(localObjectPosition).sub(localIntersectionPoint);
             }
             this.navigation.SetNavigationMode(0);
-            console.log(this.navigation);
             //this.controls.enabled = false;
         }
     }
@@ -1084,7 +1113,7 @@ export class Viewer
             this.raycaster.setFromCamera(this.navigation.mouse, this.camera);
     
             if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
-                const parentInverseMatrix = new THREE.Matrix4().copy(this.scene.getObjectByName('rootScene').matrixWorld).invert();
+                const parentInverseMatrix = new THREE.Matrix4().copy(this.scene.getObjectByName('mainGroup').matrixWorld).invert();
                 const localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
     
                 const newPosition = localIntersectionPoint.add(this.dragOffset);
@@ -1147,9 +1176,9 @@ export class Viewer
         const boundingBox = new THREE.Box3().setFromObject(this.mainObject, true);
         const boundingSphere = new THREE.Sphere();
         boundingBox.getBoundingSphere(boundingSphere);
-        this.FitSphereToWindow(boundingSphere, false, 30, true);
-        // Update the navigation with the new bounding box
-        //this.navigation.UpdateZoomLimit(boundingSphere);
-        //this.Render();
+        this.FitSphereToWindow(boundingSphere, false, 10, false);
+        // if (boundingSphere.radius < this.navigation.minimumDistance) {
+        //     this.FitSphereToWindow(boundingSphere, false, 30, true), false;
+        // }
     }
 }
