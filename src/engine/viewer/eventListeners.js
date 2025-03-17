@@ -139,7 +139,7 @@ export function setupEventListeners(viewer) {
 
     slider.addEventListener("input", (event) => {
         const factor = event.target.value;
-        viewer.GetViewer().ExplodeModel(factor, 0.3, viewer.GetViewer()); // Lower duration for a smooth effect
+        viewer.GetViewer().ExplodeModel(factor, 0.5, viewer.GetViewer()); // Lower duration for a smooth effect
     });
     
 

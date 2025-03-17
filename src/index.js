@@ -38,15 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add event listener for file input
-    const fileInput = document.getElementById('file-input');
-    fileInput.addEventListener('change', async (event) => {
-        console.log('File input changed');
-        const files = event.target.files;
-        if (files.length > 0) {
-            await handleFileUpload(files, viewer);
-        }
-    });
+    // // Add event listener for file input
+    // const fileInput = document.getElementById('file-input');
+    // fileInput.addEventListener('change', async (event) => {
+    //     console.log('File input changed');
+    //     const files = event.target.files;
+    //     if (files.length > 0) {
+    //         await handleFileUpload(files, viewer);
+    //     }
+    // });
 
     async function handleFileUpload(files, viewer) {
         // Assuming the files are model files, you can load them into the viewer

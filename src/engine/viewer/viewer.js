@@ -1176,7 +1176,7 @@ export class Viewer
         const boundingBox = new THREE.Box3().setFromObject(this.mainObject, true);
         const boundingSphere = new THREE.Sphere();
         boundingBox.getBoundingSphere(boundingSphere);
-        this.FitSphereToWindow(boundingSphere, false, 10, false);
+        this.FitSphereToWindow(boundingSphere, false, 20, false);
         // if (boundingSphere.radius < this.navigation.minimumDistance) {
         //     this.FitSphereToWindow(boundingSphere, false, 30, true), false;
         // }
