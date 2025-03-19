@@ -124,7 +124,8 @@ export class UpVector
     {
         this.direction = newDirection;
         this.isFlipped = false;
-
+        console.log("set direction", typeof this.direction);
+        console.log("set direction", this.direction);
         let defaultCamera = GetDefaultCamera (this.direction);
         let defaultDir = SubCoord3D (defaultCamera.eye, defaultCamera.center);
 

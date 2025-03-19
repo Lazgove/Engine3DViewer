@@ -1,3 +1,5 @@
+import { Direction } from '../geometry/geometry.js';
+
 export function setupEventListeners(viewer) {
     const resetButton = document.getElementById('reset-button');
     const autoRotateCheckbox = document.getElementById('auto-rotate');
@@ -13,6 +15,21 @@ export function setupEventListeners(viewer) {
     blackModeCheckbox.checked = true;
     repereCheckbox.checked = false;
     manuelCheckbox.checked = false;
+
+    const upVectorCheckbox = document.getElementById('upVectorCheckbox');
+
+    // Set initial up vector to Y
+    //viewer.SetUpVector(new THREE.Vector3(0, 1, 0), false);
+
+    upVectorCheckbox.addEventListener('change', (event) => {
+        if (event.target.checked) {
+            // Switch to Z up vector
+            viewer.GetViewer().SetUpVector(Direction.Z, true);
+        } else {
+            // Switch back to Y up vector
+            viewer.GetViewer().SetUpVector(Direction.Y, true);
+        }
+    });
 
     // Add click event to each dropdown item for selection
     function addDropdownItemEventListeners() {

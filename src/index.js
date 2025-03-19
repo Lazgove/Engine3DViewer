@@ -48,10 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
     //     }
     // });
 
-    // async function handleFileUpload(files, viewer) {
-    //     // Assuming the files are model files, you can load them into the viewer
-    //     viewer.LoadModelFromFileList(files, "testItem");
-    // }
+    async function handleFileUpload(files, viewer) {
+        // Assuming the files are model files, you can load them into the viewer
+        viewer.LoadModelFromFileList(files, "testItem");
+    }
 
     window.cleanAndLoadItem = async function cleanAndLoadItem(selectedItem) {
         if (selectedItem) {
