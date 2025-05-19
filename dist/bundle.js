@@ -65213,73 +65213,6 @@ function calcVolumePoint( p, q, r, U, V, W, P, u, v, w, target ) {
 
 /***/ }),
 
-/***/ "./node_modules/three/examples/jsm/geometries/TextGeometry.js":
-/*!********************************************************************!*\
-  !*** ./node_modules/three/examples/jsm/geometries/TextGeometry.js ***!
-  \********************************************************************/
-/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   TextGeometry: () => (/* binding */ TextGeometry)
-/* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
-/**
- * Text = 3D Text
- *
- * parameters = {
- *  font: <THREE.Font>, // font
- *
- *  size: <float>, // size of the text
- *  depth: <float>, // thickness to extrude text
- *  curveSegments: <int>, // number of points on the curves
- *
- *  bevelEnabled: <bool>, // turn on bevel
- *  bevelThickness: <float>, // how deep into text bevel goes
- *  bevelSize: <float>, // how far from text outline (including bevelOffset) is bevel
- *  bevelOffset: <float> // how far from text outline does bevel start
- * }
- */
-
-
-
-class TextGeometry extends three__WEBPACK_IMPORTED_MODULE_0__.ExtrudeGeometry {
-
-	constructor( text, parameters = {} ) {
-
-		const font = parameters.font;
-
-		if ( font === undefined ) {
-
-			super(); // generate default extrude geometry
-
-		} else {
-
-			const shapes = font.generateShapes( text, parameters.size );
-
-			// defaults
-
-			if ( parameters.depth === undefined ) parameters.depth = 50;
-			if ( parameters.bevelThickness === undefined ) parameters.bevelThickness = 10;
-			if ( parameters.bevelSize === undefined ) parameters.bevelSize = 8;
-			if ( parameters.bevelEnabled === undefined ) parameters.bevelEnabled = false;
-
-			super( shapes, parameters );
-
-		}
-
-		this.type = 'TextGeometry';
-
-	}
-
-}
-
-
-
-
-
-/***/ }),
-
 /***/ "./node_modules/three/examples/jsm/libs/chevrotain.module.min.js":
 /*!***********************************************************************!*\
   !*** ./node_modules/three/examples/jsm/libs/chevrotain.module.min.js ***!
@@ -78652,201 +78585,6 @@ function slice( a, b, from, to ) {
 
 }
 
-
-
-
-
-/***/ }),
-
-/***/ "./node_modules/three/examples/jsm/loaders/FontLoader.js":
-/*!***************************************************************!*\
-  !*** ./node_modules/three/examples/jsm/loaders/FontLoader.js ***!
-  \***************************************************************/
-/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   Font: () => (/* binding */ Font),
-/* harmony export */   FontLoader: () => (/* binding */ FontLoader)
-/* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
-
-
-class FontLoader extends three__WEBPACK_IMPORTED_MODULE_0__.Loader {
-
-	constructor( manager ) {
-
-		super( manager );
-
-	}
-
-	load( url, onLoad, onProgress, onError ) {
-
-		const scope = this;
-
-		const loader = new three__WEBPACK_IMPORTED_MODULE_0__.FileLoader( this.manager );
-		loader.setPath( this.path );
-		loader.setRequestHeader( this.requestHeader );
-		loader.setWithCredentials( this.withCredentials );
-		loader.load( url, function ( text ) {
-
-			const font = scope.parse( JSON.parse( text ) );
-
-			if ( onLoad ) onLoad( font );
-
-		}, onProgress, onError );
-
-	}
-
-	parse( json ) {
-
-		return new Font( json );
-
-	}
-
-}
-
-//
-
-class Font {
-
-	constructor( data ) {
-
-		this.isFont = true;
-
-		this.type = 'Font';
-
-		this.data = data;
-
-	}
-
-	generateShapes( text, size = 100 ) {
-
-		const shapes = [];
-		const paths = createPaths( text, size, this.data );
-
-		for ( let p = 0, pl = paths.length; p < pl; p ++ ) {
-
-			shapes.push( ...paths[ p ].toShapes() );
-
-		}
-
-		return shapes;
-
-	}
-
-}
-
-function createPaths( text, size, data ) {
-
-	const chars = Array.from( text );
-	const scale = size / data.resolution;
-	const line_height = ( data.boundingBox.yMax - data.boundingBox.yMin + data.underlineThickness ) * scale;
-
-	const paths = [];
-
-	let offsetX = 0, offsetY = 0;
-
-	for ( let i = 0; i < chars.length; i ++ ) {
-
-		const char = chars[ i ];
-
-		if ( char === '\n' ) {
-
-			offsetX = 0;
-			offsetY -= line_height;
-
-		} else {
-
-			const ret = createPath( char, scale, offsetX, offsetY, data );
-			offsetX += ret.offsetX;
-			paths.push( ret.path );
-
-		}
-
-	}
-
-	return paths;
-
-}
-
-function createPath( char, scale, offsetX, offsetY, data ) {
-
-	const glyph = data.glyphs[ char ] || data.glyphs[ '?' ];
-
-	if ( ! glyph ) {
-
-		console.error( 'THREE.Font: character "' + char + '" does not exists in font family ' + data.familyName + '.' );
-
-		return;
-
-	}
-
-	const path = new three__WEBPACK_IMPORTED_MODULE_0__.ShapePath();
-
-	let x, y, cpx, cpy, cpx1, cpy1, cpx2, cpy2;
-
-	if ( glyph.o ) {
-
-		const outline = glyph._cachedOutline || ( glyph._cachedOutline = glyph.o.split( ' ' ) );
-
-		for ( let i = 0, l = outline.length; i < l; ) {
-
-			const action = outline[ i ++ ];
-
-			switch ( action ) {
-
-				case 'm': // moveTo
-
-					x = outline[ i ++ ] * scale + offsetX;
-					y = outline[ i ++ ] * scale + offsetY;
-
-					path.moveTo( x, y );
-
-					break;
-
-				case 'l': // lineTo
-
-					x = outline[ i ++ ] * scale + offsetX;
-					y = outline[ i ++ ] * scale + offsetY;
-
-					path.lineTo( x, y );
-
-					break;
-
-				case 'q': // quadraticCurveTo
-
-					cpx = outline[ i ++ ] * scale + offsetX;
-					cpy = outline[ i ++ ] * scale + offsetY;
-					cpx1 = outline[ i ++ ] * scale + offsetX;
-					cpy1 = outline[ i ++ ] * scale + offsetY;
-
-					path.quadraticCurveTo( cpx1, cpy1, cpx, cpy );
-
-					break;
-
-				case 'b': // bezierCurveTo
-
-					cpx = outline[ i ++ ] * scale + offsetX;
-					cpy = outline[ i ++ ] * scale + offsetY;
-					cpx1 = outline[ i ++ ] * scale + offsetX;
-					cpy1 = outline[ i ++ ] * scale + offsetY;
-					cpx2 = outline[ i ++ ] * scale + offsetX;
-					cpy2 = outline[ i ++ ] * scale + offsetY;
-
-					path.bezierCurveTo( cpx1, cpy1, cpx2, cpy2, cpx, cpy );
-
-					break;
-
-			}
-
-		}
-
-	}
-
-	return { offsetX: glyph.ha * scale, path: path };
-
-}
 
 
 
@@ -103439,12 +103177,11 @@ var Navigation = /*#__PURE__*/function () {
     this.onContext = null;
     this.distance = null;
     this.minimumDistance = 0; // Default minimum distance
+    this.maximumDistance = 0; // Default maximum distance
     this.minimumDistanceInit = 0; // Initial minimum distance
     this.cameraMoveCallback = null; // Camera movement callback
 
     this.isAnimating = false; // Animation flag
-
-    this.debouncedSmoothZoom = debounce(this.SmoothZoom.bind(this), 100); // Debounce with 100ms delay
 
     if (this.canvas.addEventListener) {
       this.canvas.addEventListener('mousedown', this.OnMouseDown.bind(this));
@@ -103540,9 +103277,12 @@ var Navigation = /*#__PURE__*/function () {
       var fieldOfView = this.camera.fov / 2 * (aspectRatio < 1 ? aspectRatio : 1);
       var distance = radius / Math.sin(fieldOfView * _geometry_geometry_js__WEBPACK_IMPORTED_MODULE_2__.DegRad);
       var currentDistance = this.GetCameraDistanceFromCenter(center);
-      console.log("distance: ".concat(distance, ", minimumDistance: ").concat(this.minimumDistance, ", currentCamera: ").concat(currentDistance));
+      //console.log(`distance: ${distance}, minimumDistance: ${this.minimumDistance}, currentCamera: ${currentDistance}`);
+
       if (init) {
-        this.minimumDistanceInit = this.minimumDistance = distance;
+        this.minimumDistanceInit = distance;
+        this.maximumDistance = distance * 5; // Set maximum distance to twice the initial distance
+        console.log("maximumDistance: " + this.maximumDistance);
       }
       if (distance >= currentDistance) {
         fitCamera.eye = fitCamera.center.Clone().Offset(centerEyeDirection, distance);
@@ -103718,29 +103458,6 @@ var Navigation = /*#__PURE__*/function () {
       this.Zoom(ratio);
     }
   }, {
-    key: "SmoothZoom",
-    value: function SmoothZoom(direction, move) {
-      var _this2 = this;
-      if (this.isAnimating) return;
-      this.isAnimating = true;
-      var stepCount = 30; // Number of steps for animation
-      var steps = (0,_geometry_tween_js__WEBPACK_IMPORTED_MODULE_3__.TweenCoord3D)(this.camera.eye, this.camera.eye.Clone().Offset(direction, move), stepCount, _geometry_tween_js__WEBPACK_IMPORTED_MODULE_3__.ParabolicTweenFunction);
-      var _Step = function Step(obj, steps, count, index) {
-        obj.camera.eye = steps[index];
-        obj.Update();
-        if (index < count - 1) {
-          requestAnimationFrame(function () {
-            return _Step(obj, steps, count, index + 1);
-          });
-        } else {
-          obj.isAnimating = false; // Reset animation flag only after the last step
-        }
-      };
-      requestAnimationFrame(function () {
-        return _Step(_this2, steps, stepCount, 0);
-      });
-    }
-  }, {
     key: "Zoom",
     value: function Zoom(ratio) {
       if (this.isAnimating) return;
@@ -103752,44 +103469,16 @@ var Navigation = /*#__PURE__*/function () {
       // let effectiveMinDistance = Math.max(this.minimumDistance, this.minimumDistanceInit); 
 
       if (distance - move <= this.minimumDistance) {
-        console.log("zoom min dista: ", distance);
         move = distance - this.minimumDistance;
+        //if (move <= 0) return; // Prevent zooming in too much
+      }
+      if (distance - move >= this.maximumDistance) {
+        move = distance - this.maximumDistance;
         //if (move <= 0) return; // Prevent zooming in too much
       }
       if (Math.abs(move) > 0.0001) {
         this.camera.eye.Offset(direction, move);
         this.Update();
-      }
-    }
-  }, {
-    key: "UpdateZoomLimit",
-    value: function UpdateZoomLimit(boundingSphere) {
-      var sphereCenter = boundingSphere.center;
-      var sphereRadius = boundingSphere.radius;
-
-      // Update the minimum distance based on the bounding sphere size
-      this.minimumDistance = this.minimumDistanceInit + sphereRadius;
-      var cameraPosition = new three__WEBPACK_IMPORTED_MODULE_6__.Vector3().copy(this.camera.eye);
-      var directionSub = (0,_geometry_coord3d_js__WEBPACK_IMPORTED_MODULE_1__.SubCoord3D)(this.camera.center, this.camera.eye);
-      var direction = new three__WEBPACK_IMPORTED_MODULE_6__.Vector3().subVectors(this.camera.center, cameraPosition).normalize();
-
-      // Create a ray from the camera position
-      var ray = new three__WEBPACK_IMPORTED_MODULE_6__.Ray(cameraPosition, direction);
-      var intersectionPoint = new three__WEBPACK_IMPORTED_MODULE_6__.Vector3();
-      if (!ray.intersectSphere(new three__WEBPACK_IMPORTED_MODULE_6__.Sphere(sphereCenter, sphereRadius), intersectionPoint)) {
-        console.warn("No intersection with bounding sphere.");
-        return;
-      }
-
-      // Compute the distance between the camera and the intersection
-      var intersectionDistance = cameraPosition.distanceTo(intersectionPoint);
-      console.log("intersectionDistance: " + intersectionDistance);
-
-      // Move camera back if too close
-      if (intersectionDistance < this.minimumDistance) {
-        console.log("Camera is too close! Adjusting...");
-        var move = intersectionDistance - this.minimumDistance;
-        this.SmoothZoom(directionSub, move);
       }
     }
   }, {
@@ -103834,13 +103523,13 @@ function LinearTweenFunction(t) {
 function debounce(func, wait) {
   var timeout;
   return function () {
-    var _this3 = this;
+    var _this2 = this;
     for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
       args[_key] = arguments[_key];
     }
     clearTimeout(timeout);
     timeout = setTimeout(function () {
-      return func.apply(_this3, args);
+      return func.apply(_this2, args);
     }, wait);
   };
 }
@@ -103860,7 +103549,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
 
 function InitializeMasks(scene, resizable) {
-  var viewerContainer = document.getElementById('3d-viewer');
+  var viewerContainer = document.getElementById('viewer');
   var maskGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.PlaneGeometry(2, 2);
   var maskMaterial = new three__WEBPACK_IMPORTED_MODULE_0__.ShaderMaterial({
     uniforms: {
@@ -104080,8 +103769,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var gsap__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! gsap */ "./node_modules/gsap/index.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! three/examples/jsm/geometries/TextGeometry.js */ "./node_modules/three/examples/jsm/geometries/TextGeometry.js");
-/* harmony import */ var three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! three/examples/jsm/loaders/FontLoader.js */ "./node_modules/three/examples/jsm/loaders/FontLoader.js");
 /* harmony import */ var three_examples_jsm_postprocessing_EffectComposer_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! three/examples/jsm/postprocessing/EffectComposer.js */ "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js");
 /* harmony import */ var three_examples_jsm_postprocessing_RenderPass_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! three/examples/jsm/postprocessing/RenderPass.js */ "./node_modules/three/examples/jsm/postprocessing/RenderPass.js");
 /* harmony import */ var three_examples_jsm_postprocessing_UnrealBloomPass_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! three/examples/jsm/postprocessing/UnrealBloomPass.js */ "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js");
@@ -104274,6 +103961,7 @@ var Viewer = /*#__PURE__*/function () {
       animationSteps: 40
     };
     this.mainObject = null;
+    this.shadowPlaneUpdated = false;
     this.boundingSphere = null;
     this.boundingBox = null;
     this.centerBbox = null;
@@ -104289,6 +103977,11 @@ var Viewer = /*#__PURE__*/function () {
     this.intersectionPoint = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
     this.dragOffset = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
     this.targetPosition = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
+    this.meshChildren = [];
+    this.initialPositions = [];
+    this.newPositions = [];
+    this.directionVectors = [];
+    this.lastSliderValue = null;
     this.initialCameraView = null; // Property to store the initial camera view
 
     this.animate = this.animate.bind(this);
@@ -104308,20 +104001,50 @@ var Viewer = /*#__PURE__*/function () {
       var size = boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
       var maxDimension = Math.max(size.x, size.y, size.z);
 
-      // Key Light
+      // Key Light (Main Shadow Light)
       var keyLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.5);
-      keyLight.position.set(center.x + maxDimension, center.y + maxDimension, center.z + maxDimension);
+      keyLight.name = "KeyLight"; // <-- Name it
       keyLight.castShadow = true;
-      this.scene.add(keyLight);
 
-      // Fill Light
+      // Position the key light offset from center
+      keyLight.position.set(center.x + maxDimension * 100, center.y + maxDimension * 100, center.z + maxDimension * 10);
+
+      // Target the object center
+      var lightTarget = new three__WEBPACK_IMPORTED_MODULE_10__.Object3D();
+      lightTarget.position.copy(center);
+      this.scene.add(lightTarget);
+      keyLight.target = lightTarget;
+
+      // === Shadow Settings ===
+      var shadowCam = keyLight.shadow.camera;
+
+      // Frustum size to cover object nicely (padding included)
+      var frustumExtent = maxDimension * 1.5;
+      shadowCam.left = -frustumExtent;
+      shadowCam.right = frustumExtent;
+      shadowCam.top = frustumExtent;
+      shadowCam.bottom = -frustumExtent;
+      shadowCam.near = 0.1;
+      shadowCam.far = maxDimension * 1000; // Ensure depth coverage
+
+      keyLight.shadow.mapSize.set(4096, 4096);
+      keyLight.shadow.radius = 5; // Works with PCFSoftShadowMap
+      keyLight.shadow.bias = -0.001;
+      keyLight.shadow.normalBias = 0.005;
+      this.scene.add(keyLight); // Optional: or add to scene if camera-relative isn't needed
+
+      // Fill Light (softer, no shadows)
       var fillLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.2);
       fillLight.position.set(center.x - maxDimension, center.y + maxDimension, center.z + maxDimension);
+      fillLight.name = "FillLight"; // <-- Name it
+      fillLight.castShadow = false;
       this.scene.add(fillLight);
 
-      // Back Light (Red)
+      // Back Light (subtle)
       var backLight = new three__WEBPACK_IMPORTED_MODULE_10__.DirectionalLight(0xffffff, 0.1);
       backLight.position.set(center.x, center.y + maxDimension, center.z - maxDimension);
+      backLight.name = "BackLight"; // <-- Name it
+      backLight.castShadow = false;
       this.scene.add(backLight);
     }
   }, {
@@ -104335,6 +104058,9 @@ var Viewer = /*#__PURE__*/function () {
       };
       this.renderer = new three__WEBPACK_IMPORTED_MODULE_11__.WebGLRenderer(parameters);
       this.renderer.outputColorSpace = three__WEBPACK_IMPORTED_MODULE_10__.LinearSRGBColorSpace;
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = three__WEBPACK_IMPORTED_MODULE_10__.PCFSoftShadowMap; // Optional: for softer shadows
+      this.renderer.shadowMap.autoUpdate = true;
       if (window.devicePixelRatio) {
         this.renderer.setPixelRatio(window.devicePixelRatio);
       }
@@ -104349,6 +104075,10 @@ var Viewer = /*#__PURE__*/function () {
       this.InitShading();
       this.InitMasks();
       this.InitPostProcessing();
+
+      // Add the shadow plane
+      this.AddShadowPlane();
+      this.UpdateShadowPlane();
       this.Render();
 
       // Start the animation loop after initialization
@@ -104617,67 +104347,169 @@ var Viewer = /*#__PURE__*/function () {
     key: "SetMainObject",
     value: function SetMainObject(object) {
       var _this2 = this;
-      var shadingType = GetShadingTypeOfObject(object);
+      // Set up main object and shading model
       this.mainModel.SetMainObject(object);
-      console.log("mainModel", this.mainModel);
-      this.shadingModel.SetShadingType(shadingType);
-
-      // Store the initial camera view
+      this.shadingModel.SetShadingType(GetShadingTypeOfObject(object));
       this.initialCameraView = this.navigation.GetCamera().Clone();
-
-      // Create a new group and set its position to (0, 0, 0)
-      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(object);
-      var center = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-      var group = new three__WEBPACK_IMPORTED_MODULE_10__.Group();
-      group.position.set(0, 0, 0);
-      this.scene.add(group);
+      var group = this.scene.getObjectByName('mainGroup') || new three__WEBPACK_IMPORTED_MODULE_10__.Group();
       group.name = 'mainGroup';
+      group.clear();
+      this.scene.add(group);
 
-      // Adjust the position of the mainObject and add it to the group
-      object.position.sub(center);
-      group.add(object);
-      this.isAnimating = true;
-      this.mainObject = group;
-      var newBoundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(object);
-      this.boundingBox = newBoundingBox;
-      var radius = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length() / 2;
-
-      // Create the bounding sphere
-      this.centerBbox = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(0, 0, 0);
-      this.boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere(this.centerBbox, radius);
-      this.size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-
-      // Store initial positions and generate evenly spaced direction vectors
+      // Initialize storage arrays
+      this.meshChildren = [];
       this.initialPositions = [];
       this.directionVectors = [];
-      var numChildren = 0;
-      this.mainObject.traverse(function (child) {
-        if (child.isMesh && !child.userData.isAnnotation) {
-          numChildren++;
-        }
-      });
 
-      // Generate evenly spaced directions using Fibonacci Sphere
-      for (var i = 0; i < numChildren; i++) {
-        var theta = Math.acos(1 - 2 * (i + 0.5) / numChildren); // Polar angle
-        var phi = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5); // Azimuthal angle
+      // Center object by adjusting its position to its bounding box center
+      this.boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(object);
+      var center = this.boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      object.position.sub(center);
+      group.add(object);
+      this.mainObject = group;
 
-        var x = Math.sin(theta) * Math.cos(phi);
-        var y = Math.sin(theta) * Math.sin(phi);
-        var z = Math.cos(theta);
-        this.directionVectors.push(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(x, y, z).normalize());
-      }
-      var index = 0;
-      this.mainObject.traverse(function (child) {
+      // Compute bounding sphere
+      this.boundingSphere = this.boundingBox.getBoundingSphere(new three__WEBPACK_IMPORTED_MODULE_10__.Sphere());
+
+      // Prepare explosion data (based on mesh size)
+      var minSize = Infinity,
+        maxSize = 0;
+
+      // Traverse the object once for both explosion calculation and shadow settings
+      object.traverse(function (child) {
         if (child.isMesh && !child.userData.isAnnotation) {
+          // Get the mesh size and store the data
+          var size = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(child).getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length();
+          _this2.meshChildren.push({
+            child: child,
+            size: size
+          });
           _this2.initialPositions.push(child.position.clone());
-          index++;
+          minSize = Math.min(minSize, size);
+          maxSize = Math.max(maxSize, size);
+
+          // Enable shadows for this mesh
+          child.castShadow = true;
+          child.receiveShadow = true;
         }
       });
-      console.log("Initial Positions:", this.initialPositions);
-      console.log("Direction Vectors:", this.directionVectors);
+      if (this.meshChildren.length === 0) return; // Early exit if no meshes
 
-      // Setup three-point lighting
+      var numChildren = this.meshChildren.length;
+
+      // Generate explosion directions using Fibonacci Sphere (calculated once)
+      this.directionVectors.length = 0; // Reset the array for reuse
+      for (var i = 0; i < numChildren; i++) {
+        var theta = Math.acos(1 - 2 * (i + 0.5) / numChildren); // Vertical angle
+        var phi = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5); // Horizontal angle
+        this.directionVectors.push(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(Math.sin(theta) * Math.cos(phi), Math.sin(theta) * Math.sin(phi), Math.cos(theta)).normalize());
+      }
+
+      // Calculate explosion distances
+      var objectSize = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length();
+      var maxExplosionDistance = objectSize * 0.5; // Max explosion distance based on the object's size
+
+      // Loop through meshes and calculate new positions (explosion effect)
+      this.meshChildren.forEach(function (meshData, i) {
+        var child = meshData.child,
+          size = meshData.size;
+        var initialPos = _this2.initialPositions[i].clone();
+
+        // Normalize the size of the mesh between 0.1 and 1
+        var normalizedSize = three__WEBPACK_IMPORTED_MODULE_10__.MathUtils.clamp((size - minSize) / (maxSize - minSize), 0.1, 1);
+
+        // Calculate explosion distance for this mesh
+        var explosionDistance = normalizedSize * maxExplosionDistance;
+
+        // Store explosion factor for use when the slider changes (not applied here)
+        child.userData.explosionDistance = explosionDistance;
+      });
+
+      // Ensure shadow plane also receives shadows
+      this.shadowPlane.receiveShadow = true;
+
+      // Set up scene lighting and bounding boxes
+      this.SetupThreePointLighting();
+      this.CreateBoundingBoxMesh();
+      this.CreateBoundingBoxesAndAnnotations();
+
+      // Render the scene
+      this.Render();
+    }
+  }, {
+    key: "SetMainObjectBefore",
+    value: function SetMainObjectBefore(object) {
+      var _this3 = this;
+      this.mainModel.SetMainObject(object);
+      this.shadingModel.SetShadingType(GetShadingTypeOfObject(object));
+      this.initialCameraView = this.navigation.GetCamera().Clone();
+      var group = this.scene.getObjectByName('mainGroup') || new three__WEBPACK_IMPORTED_MODULE_10__.Group();
+      group.name = 'mainGroup';
+      group.clear();
+      this.scene.add(group);
+
+      // Initialize storage
+      this.meshChildren = [];
+      this.initialPositions = [];
+      this.newPositions = [];
+      this.directionVectors = [];
+
+      // Center object
+      console.log(object);
+      console.log(_typeof(object));
+      this.boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(object);
+      var center = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      object.position.sub(center);
+      group.add(object);
+      this.mainObject = group;
+      var radius = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length() / 2;
+      this.boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(), radius);
+
+      // Prepare explosion data
+      var minSize = Infinity,
+        maxSize = 0;
+      object.traverse(function (child) {
+        if (child.isMesh && !child.userData.isAnnotation) {
+          var size = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(child).getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3()).length();
+          _this3.meshChildren.push({
+            child: child,
+            size: size
+          });
+          _this3.initialPositions.push(child.position.clone());
+          minSize = Math.min(minSize, size);
+          maxSize = Math.max(maxSize, size);
+        }
+      });
+      if (this.meshChildren.length === 0) return;
+      var numChildren = this.meshChildren.length;
+
+      // Generate explosion directions using Fibonacci Sphere
+      for (var i = 0; i < numChildren; i++) {
+        var theta = Math.acos(1 - 2 * (i + 0.5) / numChildren);
+        var phi = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
+        this.directionVectors.push(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(Math.sin(theta) * Math.cos(phi), Math.sin(theta) * Math.sin(phi), Math.cos(theta)).normalize());
+      }
+
+      // Compute explosion distances
+      for (var _i = 0; _i < numChildren; _i++) {
+        var _this$meshChildren$_i = this.meshChildren[_i],
+          child = _this$meshChildren$_i.child,
+          size = _this$meshChildren$_i.size;
+        var normalizedSize = (size - minSize) / (maxSize - minSize);
+        var explosionFactor = three__WEBPACK_IMPORTED_MODULE_10__.MathUtils.lerp(0.1, 1, normalizedSize) * radius * 0.1;
+        this.newPositions.push(this.initialPositions[_i].clone().add(this.directionVectors[_i].multiplyScalar(explosionFactor)));
+      }
+
+      // Enable shadows
+      object.traverse(function (child) {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      this.shadowPlane.receiveShadow = true;
+
+      // Setup scene
       this.SetupThreePointLighting();
       this.CreateBoundingBoxMesh();
       this.CreateBoundingBoxesAndAnnotations();
@@ -104778,24 +104610,19 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "InitNavigation",
     value: function InitNavigation() {
-      var _this3 = this;
+      var _this4 = this;
       var camera = GetDefaultCamera(_geometry_geometry_js__WEBPACK_IMPORTED_MODULE_1__.Direction.Y);
       this.camera = new three__WEBPACK_IMPORTED_MODULE_10__.PerspectiveCamera(45.0, 1.0, 0.1, 1000.0);
       this.projectionMode = _camera_js__WEBPACK_IMPORTED_MODULE_4__.ProjectionMode.Perspective;
       this.cameraValidator = new CameraValidator();
       this.scene.add(this.camera);
+      console.log("scene", this.scene);
       var canvasElem = this.renderer.domElement;
       this.navigation = new _navigation_js__WEBPACK_IMPORTED_MODULE_6__.Navigation(canvasElem, camera, {
         onUpdate: function onUpdate() {
-          _this3.Render();
+          _this4.Render();
         }
       });
-
-      // // Set the camera movement callback
-      // this.navigation.setCameraMoveCallback(() => {
-      //     this.onCameraMove();
-      // });
-
       this.upVector = new UpVector();
     }
   }, {
@@ -104890,30 +104717,46 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "animate",
     value: function animate() {
-      var _this4 = this;
+      var _this5 = this;
       requestAnimationFrame(this.animate);
-      if (this.isAnimating && this.mainObject) {
-        this.mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
-      }
-      this.GetScene().traverse(function (child) {
-        if (child.userData.viewCam && child.userData.isAnnotation) {
-          child.lookAt(_this4.camera.position);
+      if (this.isRotating && this.mainObject) {
+        if (this.upVector.direction === _geometry_geometry_js__WEBPACK_IMPORTED_MODULE_1__.Direction.Y) {
+          this.mainObject.rotation.z = 0;
+          this.mainObject.rotation.y += this.rotationSpeed * Math.PI / 180 * (1 / 60);
+        } else if (this.upVector.direction === _geometry_geometry_js__WEBPACK_IMPORTED_MODULE_1__.Direction.Z) {
+          this.mainObject.rotation.y = 0;
+          this.mainObject.rotation.z += this.rotationSpeed * Math.PI / 180 * (1 / 60);
         }
-      });
+      }
+      if (this.scene && this.camera) {
+        this.GetScene().traverse(function (child) {
+          if (child.userData && child.userData.viewCam && child.userData.isAnnotation) {
+            child.lookAt(_this5.camera.position);
+          }
+        });
+      }
+
+      // Update the shadow plane position and orientation
+
+      // One-time shadow plane update when mainObject is ready
+      if (!this.shadowPlaneUpdated && this.mainObject) {
+        this.UpdateShadowPlane();
+        this.shadowPlaneUpdated = true;
+      }
       this.Render();
     }
   }, {
     key: "EaseInRotation",
     value: function EaseInRotation() {
-      var _this5 = this;
+      var _this6 = this;
       this.isEasing = true;
       var _easeIn = function easeIn() {
-        if (_this5.rotationSpeed < _this5.targetSpeed && _this5.isRotating) {
-          _this5.rotationSpeed += _this5.easingFactor * (_this5.targetSpeed - _this5.rotationSpeed);
+        if (_this6.rotationSpeed < _this6.targetSpeed && _this6.isRotating) {
+          _this6.rotationSpeed += _this6.easingFactor * (_this6.targetSpeed - _this6.rotationSpeed);
           requestAnimationFrame(_easeIn);
         } else {
-          _this5.rotationSpeed = _this5.targetSpeed;
-          _this5.isEasing = false;
+          _this6.rotationSpeed = _this6.targetSpeed;
+          _this6.isEasing = false;
         }
       };
       _easeIn();
@@ -104921,129 +104764,150 @@ var Viewer = /*#__PURE__*/function () {
   }, {
     key: "EaseOutRotation",
     value: function EaseOutRotation() {
-      var _this6 = this;
+      var _this7 = this;
       this.isEasing = true;
       var _easeOut = function easeOut() {
-        if (_this6.rotationSpeed > 0 && !_this6.isRotating) {
-          _this6.rotationSpeed -= _this6.easingFactor * _this6.rotationSpeed;
+        if (_this7.rotationSpeed > 0 && !_this7.isRotating) {
+          _this7.rotationSpeed -= _this7.easingFactor * _this7.rotationSpeed;
           requestAnimationFrame(_easeOut);
         } else {
-          _this6.rotationSpeed = 0;
-          _this6.isEasing = false;
+          _this7.rotationSpeed = 0;
+          _this7.isEasing = false;
         }
       };
       _easeOut();
     }
+
+    /**
+     * Handles explosion effect efficiently.
+     */
   }, {
     key: "ExplodeModel",
     value: function ExplodeModel(factor) {
-      var _this7 = this;
       var duration = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.5;
-      if (!this.mainObject) {
-        console.error("Main object is not defined.");
+      if (!this.mainObject || !this.meshChildren.length) {
+        console.error("Main object is not set.");
         return;
       }
 
-      // Define minimum and maximum explosion multipliers
-      var minMultiplier = 0.2;
-      var maxMultiplier = 1.5;
-
-      // Compute max explosion distance and clamp it
+      // Compute explosion distance
+      var minMultiplier = 0.2,
+        maxMultiplier = 1.5;
       var maxExplosionDistance = three__WEBPACK_IMPORTED_MODULE_10__.MathUtils.clamp(this.boundingSphere.radius * 1.5, this.boundingSphere.radius * minMultiplier, this.boundingSphere.radius * maxMultiplier);
-
-      // Scale explosion distance based on slider factor (0 to 100)
       var explosionDistance = factor / 100 * maxExplosionDistance;
-      if (!this.initialPositions || !this.directionVectors) {
-        console.error("Initial positions or direction vectors are not defined.");
-        return;
+
+      // If the factor change is too small, ignore animation
+      if (this.lastFactor !== null && Math.abs(factor - this.lastFactor) < 2) return;
+      this.lastFactor = factor;
+
+      // Apply instant position while sliding
+      this.ApplyInstantPosition(explosionDistance);
+
+      // // Clear previous timeout and apply smooth animation after sliding stops
+      // if (this.sliderTimeout) clearTimeout(this.sliderTimeout);
+      // this.sliderTimeout = setTimeout(() => {
+      //     this.ApplySmoothAnimation(explosionDistance, duration);
+      // }, 100);
+    }
+
+    /**
+     * Instantly moves objects while sliding.
+     */
+  }, {
+    key: "ApplyInstantPosition",
+    value: function ApplyInstantPosition(explosionDistance) {
+      for (var i = 0; i < this.meshChildren.length; i++) {
+        var newPosition = this.initialPositions[i].clone().add(this.directionVectors[i].clone().multiplyScalar(explosionDistance));
+        this.meshChildren[i].child.position.set(newPosition.x, newPosition.y, newPosition.z);
       }
-      var index = 0;
-      var totalMeshes = 0;
-      var completedMeshes = 0;
+      this.ThrottledCameraUpdate();
+    }
+
+    /**
+     * Applies smooth animation after the user stops moving the slider.
+     */
+  }, {
+    key: "ApplySmoothAnimation",
+    value: function ApplySmoothAnimation(explosionDistance, duration) {
+      var _this8 = this;
       var animations = [];
-      this.mainObject.traverse(function (child) {
-        if (child.userData.isAnnotation) {
-          console.log("Annotation found, skipping:", child.name);
-          return; // Skip annotations entirely
-        }
-        if (child.isMesh && !child.userData.isAnnotation) {
-          console.log("Processing mesh:", child.name, "Index:", index);
-          if (index >= _this7.directionVectors.length) {
-            console.log("Index ".concat(index, " exceeds directionVectors array length (").concat(_this7.directionVectors.length, ")"));
-            return; // Stop processing further to prevent errors
-          }
-          totalMeshes++;
-          var direction = _this7.directionVectors[index].clone();
-          var newPosition = _this7.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
-          gsap__WEBPACK_IMPORTED_MODULE_16__["default"].killTweensOf(child.position);
-          animations.push(new Promise(function (resolve) {
-            gsap__WEBPACK_IMPORTED_MODULE_16__["default"].to(child.position, {
-              x: newPosition.x,
-              y: newPosition.y,
-              z: newPosition.z,
-              duration: duration,
-              ease: "power2.out",
-              onComplete: resolve
-            });
-          }));
-          index++; // Only increment if we actually move the mesh
-        }
-      });
-      Promise.all(animations).then(function () {
-        console.log("All animations are complete");
-        _this7.OptimizedCameraUpdate();
+      for (var i = 0; i < this.meshChildren.length; i++) {
+        var newPosition = this.initialPositions[i].clone().add(this.directionVectors[i].clone().multiplyScalar(explosionDistance));
+        gsap__WEBPACK_IMPORTED_MODULE_16__["default"].killTweensOf(this.meshChildren[i].child.position);
+        animations.push(gsap__WEBPACK_IMPORTED_MODULE_16__["default"].to(this.meshChildren[i].child.position, {
+          x: newPosition.x,
+          y: newPosition.y,
+          z: newPosition.z,
+          duration: duration,
+          ease: "power2.out"
+        }));
+      }
+      gsap__WEBPACK_IMPORTED_MODULE_16__["default"].timeline().add(animations).eventCallback("onComplete", function () {
+        _this8.OptimizedCameraUpdate();
       });
     }
 
-    // Optimized camera update with throttling
+    /**
+     * Optimized camera update with requestAnimationFrame
+     */
   }, {
     key: "OptimizedCameraUpdate",
     value: function OptimizedCameraUpdate() {
-      var _this8 = this;
+      var _this9 = this;
       if (this.cameraUpdatePending) return;
       this.cameraUpdatePending = true;
-      setTimeout(function () {
-        _this8.UpdateCameraAndControls();
-        _this8.cameraUpdatePending = false;
-      }, 100);
+      requestAnimationFrame(function () {
+        _this9.UpdateCameraAndControls();
+        _this9.cameraUpdatePending = false;
+      });
     }
 
-    // Throttled function to prevent excessive camera updates
+    /**
+     * Camera update with throttling.
+     */
   }, {
     key: "ThrottledCameraUpdate",
     value: function ThrottledCameraUpdate() {
-      var _this9 = this;
-      if (!this.cameraUpdatePending) {
-        this.cameraUpdatePending = true;
-        requestAnimationFrame(function () {
-          _this9.UpdateCameraAndControls();
-          _this9.cameraUpdatePending = false;
-        });
-      }
+      var _this10 = this;
+      if (this.cameraUpdatePending) return;
+      this.cameraUpdatePending = true;
+      requestAnimationFrame(function () {
+        _this10.UpdateCameraAndControls();
+        _this10.cameraUpdatePending = false;
+      });
     }
   }, {
     key: "CreateBoundingBoxMesh",
     value: function CreateBoundingBoxMesh() {
-      var centerBbox = this.boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
-      console.log("bounding box", this.boundingBox);
-      var size = this.boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var mainGroup = this.scene.getObjectByName('mainGroup');
+
+      // Create bounding box in local space of mainGroup
+      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainGroup);
+      console.log("computed bounding box", boundingBox);
+      var size = boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var center = boundingBox.getCenter(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+
+      // Store it if you want to reuse
+      this.boundingBox = boundingBox;
+
+      // Optional: scale shadowPlane based on bounding box
+      this.shadowPlane.scale.set(size.x * 5, size.y * 5, size.z * 5);
+
+      // Create the box mesh
       var boxGeometry = new three__WEBPACK_IMPORTED_MODULE_10__.BoxGeometry(1, 1, 1);
       var boxMaterial = new three__WEBPACK_IMPORTED_MODULE_10__.LineBasicMaterial({
         color: 0xff0000
       });
       var boundingBoxHelper = new three__WEBPACK_IMPORTED_MODULE_10__.LineSegments(new three__WEBPACK_IMPORTED_MODULE_10__.EdgesGeometry(boxGeometry), boxMaterial);
-      var cotationCheckbox = document.getElementById('cotationCheckbox');
       boundingBoxHelper.name = 'boundingBoxHelper';
-      boundingBoxHelper.scale.set(size.x, size.y, size.z);
-      if (cotationCheckbox.checked) {
-        boundingBoxHelper.visible = true;
-      } else {
-        boundingBoxHelper.visible = false;
-      }
       boundingBoxHelper.userData.isAnnotation = true;
-      var mainGroup = this.scene.getObjectByName('mainGroup');
+
+      // Scale and position to match bounding box
+      boundingBoxHelper.scale.set(size.x, size.y, size.z);
+      boundingBoxHelper.position.copy(center);
+      var cotationCheckbox = document.getElementById('cotationCheckbox');
+      boundingBoxHelper.visible = cotationCheckbox.checked;
       mainGroup.add(boundingBoxHelper);
-      //boundingBoxHelper.position.set(0, 0, 0);
     }
   }, {
     key: "CreateBoundingBoxesAndAnnotations",
@@ -105051,11 +104915,45 @@ var Viewer = /*#__PURE__*/function () {
       //const mainObject = this.mainModel.GetMainObject().GetRootObject();
       var boundingBox = this.boundingBox;
       console.log("bounding box annotations", boundingBox);
-      var objectHeight = (0,_threejs_threeutils_js__WEBPACK_IMPORTED_MODULE_3__.GetObjectHeight)(this.mainObject);
       var size = boundingBox.getSize(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3());
+      var objectHeight = Math.max(size.x, size.y, size.z); // Get the largest dimension
+
       this.CreateDoubleSidedArrow(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.min.x, boundingBox.min.y, boundingBox.min.z), new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z), "".concat(size.x.toFixed(2), " cm"), objectHeight);
       this.CreateDoubleSidedArrow(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z), new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.max.y, boundingBox.min.z), "".concat(size.y.toFixed(2), " cm"), objectHeight);
       this.CreateDoubleSidedArrow(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z), new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.max.z), "".concat(size.z.toFixed(2), " cm"), objectHeight);
+    }
+
+    // Create text sprite
+  }, {
+    key: "CreateTextSprite",
+    value: function CreateTextSprite(label, position) {
+      var scale = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
+      var canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 256;
+      var ctx = canvas.getContext('2d');
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "64px Arial";
+
+      // Shadow text
+      ctx.fillStyle = "black";
+      ctx.fillText(label, canvas.width / 2 + 3, canvas.height / 2 + 3);
+
+      // Main text
+      ctx.fillStyle = "red";
+      ctx.fillText(label, canvas.width / 2, canvas.height / 2);
+      var texture = new three__WEBPACK_IMPORTED_MODULE_10__.CanvasTexture(canvas);
+      texture.minFilter = three__WEBPACK_IMPORTED_MODULE_10__.LinearFilter;
+      var material = new three__WEBPACK_IMPORTED_MODULE_10__.SpriteMaterial({
+        map: texture,
+        transparent: true
+      });
+      var sprite = new three__WEBPACK_IMPORTED_MODULE_10__.Sprite(material);
+      sprite.scale.set(scale * 2, scale, 1);
+      sprite.position.copy(position);
+      sprite.quaternion.copy(this.camera.quaternion);
+      return sprite;
     }
   }, {
     key: "CreateDoubleSidedArrow",
@@ -105085,35 +104983,44 @@ var Viewer = /*#__PURE__*/function () {
         arrowHelper2.visible = false;
       }
       mainGroup.add(arrowHelper2);
-      var loader = new three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__.FontLoader();
-      loader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-        var textSize = objectHeight * textSizePercent;
-        var textGeometry = new three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_18__.TextGeometry(label, {
-          font: font,
-          size: textSize,
-          depth: 0.02,
-          curveSegments: 12
-        });
-        var textMaterial = new three__WEBPACK_IMPORTED_MODULE_10__.MeshBasicMaterial({
-          color: color
-        });
-        var textMesh = new three__WEBPACK_IMPORTED_MODULE_10__.Mesh(textGeometry, textMaterial);
-        var midPoint = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3().lerpVectors(startPoint, endPoint, 0.5);
-        textMesh.position.copy(midPoint);
-        textMesh.userData.isAnnotation = true;
-        textMesh.userData.viewCam = true;
-        textMesh.name = 'textMesh';
-        var cotationCheckbox = document.getElementById('cotationCheckbox');
-        if (cotationCheckbox.checked) {
-          textMesh.visible = true;
-        } else {
-          textMesh.visible = false;
-        }
-        textMeshes.push(textMesh);
-        mainGroup.add(textMesh);
-      }, undefined, function (error) {
-        console.error('Error loading font:', error);
-      });
+      var midPoint = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3().lerpVectors(startPoint, endPoint, 0.5);
+      // Add text sprite near cube
+      var text = this.CreateTextSprite(label, midPoint, 0.5);
+      this.scene.add(text);
+
+      // const loader = new FontLoader();
+      // loader.load(
+      //     'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
+      //     function (font) {
+      //         const textSize = objectHeight * textSizePercent;
+      //         const textGeometry = new TextGeometry(label, {
+      //             font: font,
+      //             size: textSize,
+      //             depth: 0.02,
+      //             curveSegments: 12,
+      //         });
+
+      //         const textMaterial = new THREE.MeshBasicMaterial({ color });
+      //         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+      //         const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
+      //         textMesh.position.copy(midPoint);
+      //         textMesh.userData.isAnnotation = true;
+      //         textMesh.userData.viewCam = true;
+      //         textMesh.name = 'textMesh';
+      //         const cotationCheckbox = document.getElementById('cotationCheckbox');
+      //         if (cotationCheckbox.checked) {
+      //             textMesh.visible = true;
+      //         } else {
+      //             textMesh.visible = false;
+      //         }
+      //         textMeshes.push(textMesh);
+      //         mainGroup.add(textMesh);
+      //     },
+      //     undefined,
+      //     function (error) {
+      //         console.error('Error loading font:', error);
+      //     }
+      // );
     }
   }, {
     key: "onMouseDown",
@@ -105159,11 +105066,11 @@ var Viewer = /*#__PURE__*/function () {
           var localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
           var newPosition = localIntersectionPoint.add(this.dragOffset);
           var mainObject = this.mainModel.GetMainObject().GetRootObject();
-          var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
+          var _boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(mainObject);
           var boxCenter = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
-          boundingBox.getCenter(boxCenter);
+          _boundingBox.getCenter(boxCenter);
           var boxSize = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3();
-          boundingBox.getSize(boxSize);
+          _boundingBox.getSize(boxSize);
           var maxDimension = Math.max(boxSize.x, boxSize.y, boxSize.z);
           var scaledHalfSize = maxDimension * 3 / 2;
           var movementLimits = {
@@ -105217,6 +105124,56 @@ var Viewer = /*#__PURE__*/function () {
       // if (boundingSphere.radius < this.navigation.minimumDistance) {
       //     this.FitSphereToWindow(boundingSphere, false, 30, true), false;
       // }
+    }
+  }, {
+    key: "AddShadowPlane",
+    value: function AddShadowPlane() {
+      // Remove existing shadow plane if it exists
+      var existingShadowPlane = this.scene.getObjectByName('shadowPlane');
+      if (existingShadowPlane) {
+        this.camera.remove(existingShadowPlane);
+      }
+
+      // Create the plane geometry and material
+      var planeGeometry = new three__WEBPACK_IMPORTED_MODULE_10__.PlaneGeometry(10000, 10000);
+      var planeMaterial = new three__WEBPACK_IMPORTED_MODULE_10__.ShadowMaterial({
+        opacity: 0.5
+      }); // Use ShadowMaterial for receiving shadows
+      //const planeMaterial = new THREE.MeshStandardMaterial({ color: 0xD5D5D5, side: THREE.DoubleSide });
+      this.shadowPlane = new three__WEBPACK_IMPORTED_MODULE_10__.Mesh(planeGeometry, planeMaterial);
+      this.shadowPlane.receiveShadow = true; // Enable shadow receiving
+      this.shadowPlane.name = 'shadowPlane';
+      this.shadowPlane.visible = true; // Make it visible
+
+      // Add the plane to the scene
+      this.scene.add(this.shadowPlane);
+
+      // Calculate the distance from the camera to the origin (0, 0, 0)
+      var distanceToOrigin = this.camera.position.length();
+
+      // Set the plane's position to (0, 0, -distanceToOrigin) relative to the camera
+      this.shadowPlane.position.set(0, 0, -distanceToOrigin);
+    }
+  }, {
+    key: "UpdateShadowPlane",
+    value: function UpdateShadowPlane() {
+      if (!this.shadowPlane || !this.mainObject) return;
+
+      // Get the bounding box of the main object
+      var boundingBox = new three__WEBPACK_IMPORTED_MODULE_10__.Box3().setFromObject(this.mainObject);
+      var boundingSphere = new three__WEBPACK_IMPORTED_MODULE_10__.Sphere();
+      boundingBox.getBoundingSphere(boundingSphere);
+
+      // Calculate the distance from the camera to the origin (0, 0, 0)
+      var distanceToOrigin = this.camera.position.length();
+
+      // Set the plane's position to (0, 0, -distanceToOrigin - boundingSphere.radius) relative to the camera
+      this.shadowPlane.position.set(0, 0, -distanceToOrigin - boundingSphere.radius);
+
+      // // Ensure the plane is perpendicular to the camera
+      // const cameraDirection = new THREE.Vector3();
+      // this.camera.getWorldDirection(cameraDirection);
+      // this.shadowPlane.lookAt(this.camera.position.clone().add(cameraDirection));
     }
   }]);
 }();
@@ -105666,13 +105623,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _engine_viewer_embeddedviewer_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./engine/viewer/embeddedviewer.js */ "./src/engine/viewer/embeddedviewer.js");
 /* harmony import */ var _engine_viewer_eventListeners_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./engine/viewer/eventListeners.js */ "./src/engine/viewer/eventListeners.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 
@@ -105684,7 +105641,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
 
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function () {
-  var viewerContainer = document.getElementById('3d-viewer');
+  var viewerContainer = document.getElementById('viewer');
   console.log('dfdfdsf');
   if (!viewerContainer) {
     console.error("Viewer container not found!");
@@ -105717,53 +105674,70 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Handle window resizing
   window.addEventListener('resize', function () {
-    var viewerContainer = document.getElementById('3d-viewer');
+    var viewerContainer = document.getElementById('viewer');
     if (viewerContainer && viewerContainer.viewerInstance) {
       viewerContainer.viewerInstance.Resize();
     }
   });
 
-  // // Add event listener for file input
-  // const fileInput = document.getElementById('file-input');
-  // fileInput.addEventListener('change', async (event) => {
-  //     console.log('File input changed');
-  //     const files = event.target.files;
-  //     if (files.length > 0) {
-  //         await handleFileUpload(files, viewer);
-  //     }
-  // });
-  function handleFileUpload(_x, _x2) {
+  // Add event listener for file input
+  var fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('change', /*#__PURE__*/function () {
+    var _ref = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(event) {
+      var files;
+      return _regeneratorRuntime().wrap(function _callee$(_context) {
+        while (1) switch (_context.prev = _context.next) {
+          case 0:
+            console.log('File input changed');
+            files = event.target.files;
+            if (!(files.length > 0)) {
+              _context.next = 5;
+              break;
+            }
+            _context.next = 5;
+            return handleFileUpload(files, viewer);
+          case 5:
+          case "end":
+            return _context.stop();
+        }
+      }, _callee);
+    }));
+    return function (_x) {
+      return _ref.apply(this, arguments);
+    };
+  }());
+  function handleFileUpload(_x2, _x3) {
     return _handleFileUpload.apply(this, arguments);
   }
   function _handleFileUpload() {
-    _handleFileUpload = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(files, viewer) {
-      return _regeneratorRuntime().wrap(function _callee2$(_context2) {
-        while (1) switch (_context2.prev = _context2.next) {
+    _handleFileUpload = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(files, viewer) {
+      return _regeneratorRuntime().wrap(function _callee3$(_context3) {
+        while (1) switch (_context3.prev = _context3.next) {
           case 0:
             // Assuming the files are model files, you can load them into the viewer
             viewer.LoadModelFromFileList(files, "testItem");
           case 1:
           case "end":
-            return _context2.stop();
+            return _context3.stop();
         }
-      }, _callee2);
+      }, _callee3);
     }));
     return _handleFileUpload.apply(this, arguments);
   }
   window.cleanAndLoadItem = /*#__PURE__*/function () {
-    var _cleanAndLoadItem = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(selectedItem) {
+    var _cleanAndLoadItem = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(selectedItem) {
       var files, fileData, modelUrls;
-      return _regeneratorRuntime().wrap(function _callee$(_context) {
-        while (1) switch (_context.prev = _context.next) {
+      return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+        while (1) switch (_context2.prev = _context2.next) {
           case 0:
             if (!selectedItem) {
-              _context.next = 10;
+              _context2.next = 10;
               break;
             }
-            _context.next = 3;
+            _context2.next = 3;
             return fetchDynamoData(false, selectedItem);
           case 3:
-            files = _context.sent;
+            files = _context2.sent;
             fileData = files[0]; //console.log(fileData);
             // Create the modelUrls array
             modelUrls = [];
@@ -105781,27 +105755,27 @@ document.addEventListener('DOMContentLoaded', function () {
             viewerContainer.viewerInstance.LoadModelFromUrlList(modelUrls, selectedItem);
           case 10:
           case "end":
-            return _context.stop();
+            return _context2.stop();
         }
-      }, _callee);
+      }, _callee2);
     }));
-    function cleanAndLoadItem(_x3) {
+    function cleanAndLoadItem(_x4) {
       return _cleanAndLoadItem.apply(this, arguments);
     }
     return cleanAndLoadItem;
   }();
-  function fetchDynamoData(_x4, _x5) {
+  function fetchDynamoData(_x5, _x6) {
     return _fetchDynamoData.apply(this, arguments);
   }
   function _fetchDynamoData() {
-    _fetchDynamoData = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(init, selectedItem) {
+    _fetchDynamoData = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee4(init, selectedItem) {
       var lambdaUrl, response, data, items;
-      return _regeneratorRuntime().wrap(function _callee3$(_context3) {
-        while (1) switch (_context3.prev = _context3.next) {
+      return _regeneratorRuntime().wrap(function _callee4$(_context4) {
+        while (1) switch (_context4.prev = _context4.next) {
           case 0:
             lambdaUrl = "https://2uhjohkckl.execute-api.eu-west-3.amazonaws.com/production/fetchDynamoDB";
-            _context3.prev = 1;
-            _context3.next = 4;
+            _context4.prev = 1;
+            _context4.next = 4;
             return fetch(lambdaUrl, {
               method: "POST",
               headers: {
@@ -105813,41 +105787,41 @@ document.addEventListener('DOMContentLoaded', function () {
               })
             });
           case 4:
-            response = _context3.sent;
+            response = _context4.sent;
             if (response.ok) {
-              _context3.next = 7;
+              _context4.next = 7;
               break;
             }
             throw new Error("HTTP error! status: ".concat(response.status));
           case 7:
-            _context3.next = 9;
+            _context4.next = 9;
             return response.json();
           case 9:
-            data = _context3.sent;
+            data = _context4.sent;
             console.log("Data received from Lambda:", data);
             items = JSON.parse(data.body);
             if (!init) {
-              _context3.next = 16;
+              _context4.next = 16;
               break;
             }
             populateDropdown(items);
-            _context3.next = 17;
+            _context4.next = 17;
             break;
           case 16:
-            return _context3.abrupt("return", items);
+            return _context4.abrupt("return", items);
           case 17:
-            _context3.next = 23;
+            _context4.next = 23;
             break;
           case 19:
-            _context3.prev = 19;
-            _context3.t0 = _context3["catch"](1);
-            console.error("Error calling Lambda function:", _context3.t0);
-            throw _context3.t0;
+            _context4.prev = 19;
+            _context4.t0 = _context4["catch"](1);
+            console.error("Error calling Lambda function:", _context4.t0);
+            throw _context4.t0;
           case 23:
           case "end":
-            return _context3.stop();
+            return _context4.stop();
         }
-      }, _callee3, null, [[1, 19]]);
+      }, _callee4, null, [[1, 19]]);
     }));
     return _fetchDynamoData.apply(this, arguments);
   }

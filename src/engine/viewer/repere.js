@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export function InitializeMasks(scene, resizable) {
-    const viewerContainer = document.getElementById('3d-viewer');
+    const viewerContainer = document.getElementById('viewer');
     const maskGeometry = new THREE.PlaneGeometry(2, 2);
     const maskMaterial = new THREE.ShaderMaterial({
         uniforms: {

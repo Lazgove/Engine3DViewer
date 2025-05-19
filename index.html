@@ -6,9 +6,9 @@
     <title>3D Viewer</title>
     <style>
         /* Basic styles for the viewer container */
-        #3d-viewer {
-            width: 1000px;
-            height: 1500px;
+        #viewer {
+            width: 100%;
+            height: 80vh;
             margin: 0;
             padding: 0;
             overflow: hidden;
@@ -39,7 +39,7 @@
     </label>
     <input type="range" id="mySlider" min="0" max="100" value="0" style="display: block;">
 
-    <div id="3d-viewer"></div>
+    <div id="viewer"></div>
 
     <!-- Load the bundled JavaScript file -->
     <script src="./dist/bundle.js"></script>

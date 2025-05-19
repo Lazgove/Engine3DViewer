@@ -221,12 +221,11 @@ export class Navigation {
         this.distance = null;
 
         this.minimumDistance = 0; // Default minimum distance
+        this.maximumDistance = 0; // Default maximum distance
         this.minimumDistanceInit = 0; // Initial minimum distance
         this.cameraMoveCallback = null; // Camera movement callback
 
         this.isAnimating = false; // Animation flag
-
-        this.debouncedSmoothZoom = debounce(this.SmoothZoom.bind(this), 100); // Debounce with 100ms delay
 
         if (this.canvas.addEventListener) {
             this.canvas.addEventListener('mousedown', this.OnMouseDown.bind(this));
@@ -317,10 +316,12 @@ export class Navigation {
         const distance = radius / Math.sin(fieldOfView * DegRad);
         
         const currentDistance = this.GetCameraDistanceFromCenter(center);
-        console.log(`distance: ${distance}, minimumDistance: ${this.minimumDistance}, currentCamera: ${currentDistance}`);
+        //console.log(`distance: ${distance}, minimumDistance: ${this.minimumDistance}, currentCamera: ${currentDistance}`);
     
         if (init) {
-            this.minimumDistanceInit = this.minimumDistance = distance;
+            this.minimumDistanceInit = distance;
+            this.maximumDistance = distance * 5; // Set maximum distance to twice the initial distance
+            console.log("maximumDistance: " + this.maximumDistance);
         }
     
         if (distance >= currentDistance) {
@@ -507,27 +508,6 @@ export class Navigation {
         this.Zoom(ratio);
     }
     
-    SmoothZoom(direction, move) {
-        if (this.isAnimating) return;
-        
-        this.isAnimating = true;
-        const stepCount = 30; // Number of steps for animation
-        const steps = TweenCoord3D(this.camera.eye, this.camera.eye.Clone().Offset(direction, move), stepCount, ParabolicTweenFunction);
-        
-        const Step = (obj, steps, count, index) => {
-            obj.camera.eye = steps[index];
-            obj.Update();
-        
-            if (index < count - 1) {
-                requestAnimationFrame(() => Step(obj, steps, count, index + 1));
-            } else {
-                obj.isAnimating = false; // Reset animation flag only after the last step
-            }
-        };
-        
-        requestAnimationFrame(() => Step(this, steps, stepCount, 0));
-    }
-    
     Zoom(ratio) {
         if (this.isAnimating) return;
     
@@ -539,8 +519,12 @@ export class Navigation {
         // let effectiveMinDistance = Math.max(this.minimumDistance, this.minimumDistanceInit); 
     
         if (distance - move <= this.minimumDistance) {
-            console.log("zoom min dista: ", distance);
             move = distance - this.minimumDistance;
+            //if (move <= 0) return; // Prevent zooming in too much
+        }
+
+        if (distance - move >= this.maximumDistance) {
+            move = distance - this.maximumDistance;
             //if (move <= 0) return; // Prevent zooming in too much
         }
     
@@ -550,40 +534,6 @@ export class Navigation {
         }
     }
     
-    
-    UpdateZoomLimit(boundingSphere) {
-        let sphereCenter = boundingSphere.center;
-        let sphereRadius = boundingSphere.radius;
-    
-        // Update the minimum distance based on the bounding sphere size
-        this.minimumDistance = this.minimumDistanceInit + sphereRadius;
-        
-        let cameraPosition = new THREE.Vector3().copy(this.camera.eye);
-        let directionSub = SubCoord3D(this.camera.center, this.camera.eye);
-        let direction = new THREE.Vector3().subVectors(this.camera.center, cameraPosition).normalize();
-    
-        // Create a ray from the camera position
-        let ray = new THREE.Ray(cameraPosition, direction);
-        let intersectionPoint = new THREE.Vector3();
-    
-        if (!ray.intersectSphere(new THREE.Sphere(sphereCenter, sphereRadius), intersectionPoint)) {
-            console.warn("No intersection with bounding sphere.");
-            return;
-        }
-    
-        // Compute the distance between the camera and the intersection
-        let intersectionDistance = cameraPosition.distanceTo(intersectionPoint);
-        console.log("intersectionDistance: " + intersectionDistance);
-    
-        // Move camera back if too close
-        if (intersectionDistance < this.minimumDistance) {
-            console.log("Camera is too close! Adjusting...");
-            let move = intersectionDistance - this.minimumDistance;
-            this.SmoothZoom(directionSub, move);
-        }
-    }
-    
-       
     setMinimumDistance(minDistance) {
         this.minimumDistance = minDistance;
     }

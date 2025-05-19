@@ -189,6 +189,7 @@ export class Viewer
         };
 
         this.mainObject = null;
+        this.shadowPlaneUpdated = false;
         this.boundingSphere = null;
         this.boundingBox = null;
         this.centerBbox = null;
@@ -204,6 +205,12 @@ export class Viewer
         this.intersectionPoint = new THREE.Vector3();
         this.dragOffset = new THREE.Vector3();
         this.targetPosition = new THREE.Vector3();
+        
+        this.meshChildren = [];
+        this.initialPositions = [];
+        this.newPositions = [];
+        this.directionVectors = [];
+        this.lastSliderValue = null;
 
         this.initialCameraView = null; // Property to store the initial camera view
 
@@ -223,23 +230,69 @@ export class Viewer
         const center = boundingBox.getCenter(new THREE.Vector3());
         const size = boundingBox.getSize(new THREE.Vector3());
         const maxDimension = Math.max(size.x, size.y, size.z);
-
-        // Key Light
+    
+        // Key Light (Main Shadow Light)
         const keyLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        keyLight.position.set(center.x + maxDimension, center.y + maxDimension, center.z + maxDimension);
+        keyLight.name = "KeyLight"; // <-- Name it
         keyLight.castShadow = true;
-        this.scene.add(keyLight);
-
-        // Fill Light
+    
+        // Position the key light offset from center
+        keyLight.position.set(
+            center.x + maxDimension * 100,
+            center.y + maxDimension * 100,
+            center.z + maxDimension * 10
+        );
+    
+        // Target the object center
+        const lightTarget = new THREE.Object3D();
+        lightTarget.position.copy(center);
+        this.scene.add(lightTarget);
+        keyLight.target = lightTarget;
+    
+        // === Shadow Settings ===
+        const shadowCam = keyLight.shadow.camera;
+    
+        // Frustum size to cover object nicely (padding included)
+        const frustumExtent = maxDimension * 1.5;
+    
+        shadowCam.left = -frustumExtent;
+        shadowCam.right = frustumExtent;
+        shadowCam.top = frustumExtent;
+        shadowCam.bottom = -frustumExtent;
+    
+        shadowCam.near = 0.1;
+        shadowCam.far = maxDimension * 1000; // Ensure depth coverage
+    
+        keyLight.shadow.mapSize.set(4096, 4096);
+        keyLight.shadow.radius = 5; // Works with PCFSoftShadowMap
+        keyLight.shadow.bias = -0.001;
+        keyLight.shadow.normalBias = 0.005;
+    
+        this.scene.add(keyLight); // Optional: or add to scene if camera-relative isn't needed
+    
+        // Fill Light (softer, no shadows)
         const fillLight = new THREE.DirectionalLight(0xffffff, 0.2);
-        fillLight.position.set(center.x - maxDimension, center.y + maxDimension, center.z + maxDimension);
+        fillLight.position.set(
+            center.x - maxDimension,
+            center.y + maxDimension,
+            center.z + maxDimension
+        );
+        fillLight.name = "FillLight"; // <-- Name it
+        fillLight.castShadow = false;
         this.scene.add(fillLight);
-
-        // Back Light (Red)
+    
+        // Back Light (subtle)
         const backLight = new THREE.DirectionalLight(0xffffff, 0.1);
-        backLight.position.set(center.x, center.y + maxDimension, center.z - maxDimension);
+        backLight.position.set(
+            center.x,
+            center.y + maxDimension,
+            center.z - maxDimension
+        );
+        backLight.name = "BackLight"; // <-- Name it
+        backLight.castShadow = false;
         this.scene.add(backLight);
     }
+    
 
     Init (canvas)
     {
@@ -253,6 +306,9 @@ export class Viewer
 
         this.renderer = new THREE.WebGLRenderer (parameters);
         this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Optional: for softer shadows
+        this.renderer.shadowMap.autoUpdate = true;
 
         if (window.devicePixelRatio) {
             this.renderer.setPixelRatio (window.devicePixelRatio);
@@ -270,6 +326,10 @@ export class Viewer
         this.InitShading ();
         this.InitMasks ();
         this.InitPostProcessing();
+
+        // Add the shadow plane
+        this.AddShadowPlane();
+        this.UpdateShadowPlane();
 
         this.Render ();
 
@@ -547,78 +607,181 @@ export class Viewer
     }
 
     SetMainObject(object) {
-        const shadingType = GetShadingTypeOfObject(object);
+        // Set up main object and shading model
         this.mainModel.SetMainObject(object);
-        console.log("mainModel", this.mainModel);
-        this.shadingModel.SetShadingType(shadingType);
-    
-        // Store the initial camera view
+        this.shadingModel.SetShadingType(GetShadingTypeOfObject(object));
         this.initialCameraView = this.navigation.GetCamera().Clone();
     
-        // Create a new group and set its position to (0, 0, 0)
-        const boundingBox = new THREE.Box3().setFromObject(object);
-        const center = boundingBox.getCenter(new THREE.Vector3());
-        const group = new THREE.Group();
-        group.position.set(0, 0, 0);
-        this.scene.add(group);
+        let group = this.scene.getObjectByName('mainGroup') || new THREE.Group();
         group.name = 'mainGroup';
+        group.clear();
+        this.scene.add(group);
     
-        // Adjust the position of the mainObject and add it to the group
-        object.position.sub(center);
-        group.add(object);
-    
-        this.isAnimating = true;
-        this.mainObject = group;
-        const newBoundingBox = new THREE.Box3().setFromObject(object);
-        this.boundingBox = newBoundingBox;
-        const radius = this.boundingBox.getSize(new THREE.Vector3()).length() / 2;
-    
-        // Create the bounding sphere
-        this.centerBbox = new THREE.Vector3(0, 0, 0);
-        this.boundingSphere = new THREE.Sphere(this.centerBbox, radius);
-        this.size = this.boundingBox.getSize(new THREE.Vector3());
-    
-        // Store initial positions and generate evenly spaced direction vectors
+        // Initialize storage arrays
+        this.meshChildren = [];
         this.initialPositions = [];
         this.directionVectors = [];
     
-        let numChildren = 0;
-        this.mainObject.traverse((child) => {
+        // Center object by adjusting its position to its bounding box center
+        this.boundingBox = new THREE.Box3().setFromObject(object);
+        const center = this.boundingBox.getCenter(new THREE.Vector3());
+        object.position.sub(center);
+    
+        group.add(object);
+        this.mainObject = group;
+    
+        // Compute bounding sphere
+        this.boundingSphere = this.boundingBox.getBoundingSphere(new THREE.Sphere());
+    
+        // Prepare explosion data (based on mesh size)
+        let minSize = Infinity, maxSize = 0;
+    
+        // Traverse the object once for both explosion calculation and shadow settings
+        object.traverse((child) => {
             if (child.isMesh && !child.userData.isAnnotation) {
-                numChildren++;
+                // Get the mesh size and store the data
+                const size = new THREE.Box3().setFromObject(child).getSize(new THREE.Vector3()).length();
+                this.meshChildren.push({ child, size });
+                this.initialPositions.push(child.position.clone());
+                minSize = Math.min(minSize, size);
+                maxSize = Math.max(maxSize, size);
+    
+                // Enable shadows for this mesh
+                child.castShadow = true;
+                child.receiveShadow = true;
             }
         });
     
-        // Generate evenly spaced directions using Fibonacci Sphere
+        if (this.meshChildren.length === 0) return; // Early exit if no meshes
+    
+        const numChildren = this.meshChildren.length;
+    
+        // Generate explosion directions using Fibonacci Sphere (calculated once)
+        this.directionVectors.length = 0; // Reset the array for reuse
         for (let i = 0; i < numChildren; i++) {
-            const theta = Math.acos(1 - (2 * (i + 0.5)) / numChildren); // Polar angle
-            const phi = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5); // Azimuthal angle
-    
-            const x = Math.sin(theta) * Math.cos(phi);
-            const y = Math.sin(theta) * Math.sin(phi);
-            const z = Math.cos(theta);
-    
-            this.directionVectors.push(new THREE.Vector3(x, y, z).normalize());
+            const theta = Math.acos(1 - (2 * (i + 0.5)) / numChildren); // Vertical angle
+            const phi = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5); // Horizontal angle
+            this.directionVectors.push(
+                new THREE.Vector3(
+                    Math.sin(theta) * Math.cos(phi),
+                    Math.sin(theta) * Math.sin(phi),
+                    Math.cos(theta)
+                ).normalize()
+            );
         }
     
-        let index = 0;
-        this.mainObject.traverse((child) => {
+        // Calculate explosion distances
+        const objectSize = this.boundingBox.getSize(new THREE.Vector3()).length();
+        const maxExplosionDistance = objectSize * 0.5; // Max explosion distance based on the object's size
+    
+        // Loop through meshes and calculate new positions (explosion effect)
+        this.meshChildren.forEach((meshData, i) => {
+            const { child, size } = meshData;
+            const initialPos = this.initialPositions[i].clone();
+    
+            // Normalize the size of the mesh between 0.1 and 1
+            const normalizedSize = THREE.MathUtils.clamp((size - minSize) / (maxSize - minSize), 0.1, 1);
+    
+            // Calculate explosion distance for this mesh
+            const explosionDistance = normalizedSize * maxExplosionDistance;
+    
+            // Store explosion factor for use when the slider changes (not applied here)
+            child.userData.explosionDistance = explosionDistance;
+        });
+    
+        // Ensure shadow plane also receives shadows
+        this.shadowPlane.receiveShadow = true;
+    
+        // Set up scene lighting and bounding boxes
+        this.SetupThreePointLighting();
+        this.CreateBoundingBoxMesh();
+        this.CreateBoundingBoxesAndAnnotations();
+        
+        // Render the scene
+        this.Render();
+    }
+    
+    SetMainObjectBefore(object) {
+        this.mainModel.SetMainObject(object);
+        this.shadingModel.SetShadingType(GetShadingTypeOfObject(object));
+        this.initialCameraView = this.navigation.GetCamera().Clone();
+    
+        let group = this.scene.getObjectByName('mainGroup') || new THREE.Group();
+        group.name = 'mainGroup';
+        group.clear();
+        this.scene.add(group);
+    
+        // Initialize storage
+        this.meshChildren = [];
+        this.initialPositions = [];
+        this.newPositions = [];
+        this.directionVectors = [];
+    
+        // Center object
+        console.log(object);
+        console.log(typeof object);
+        this.boundingBox = new THREE.Box3().setFromObject(object);
+        const center = boundingBox.getCenter(new THREE.Vector3());
+        object.position.sub(center);
+    
+        group.add(object);
+        this.mainObject = group;
+    
+        const radius = this.boundingBox.getSize(new THREE.Vector3()).length() / 2;
+        this.boundingSphere = new THREE.Sphere(new THREE.Vector3(), radius);
+    
+        // Prepare explosion data
+        let minSize = Infinity, maxSize = 0;
+    
+        object.traverse((child) => {
             if (child.isMesh && !child.userData.isAnnotation) {
+                const size = new THREE.Box3().setFromObject(child).getSize(new THREE.Vector3()).length();
+                this.meshChildren.push({ child, size });
                 this.initialPositions.push(child.position.clone());
-                index++;
+                minSize = Math.min(minSize, size);
+                maxSize = Math.max(maxSize, size);
             }
         });
     
-        console.log("Initial Positions:", this.initialPositions);
-        console.log("Direction Vectors:", this.directionVectors);
+        if (this.meshChildren.length === 0) return;
     
-        // Setup three-point lighting
+        const numChildren = this.meshChildren.length;
+    
+        // Generate explosion directions using Fibonacci Sphere
+        for (let i = 0; i < numChildren; i++) {
+            const theta = Math.acos(1 - (2 * (i + 0.5)) / numChildren);
+            const phi = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
+            this.directionVectors.push(new THREE.Vector3(
+                Math.sin(theta) * Math.cos(phi),
+                Math.sin(theta) * Math.sin(phi),
+                Math.cos(theta)
+            ).normalize());
+        }
+    
+        // Compute explosion distances
+        for (let i = 0; i < numChildren; i++) {
+            const { child, size } = this.meshChildren[i];
+            const normalizedSize = (size - minSize) / (maxSize - minSize);
+            const explosionFactor = THREE.MathUtils.lerp(0.1, 1, normalizedSize) * radius * 0.1;
+            this.newPositions.push(this.initialPositions[i].clone().add(this.directionVectors[i].multiplyScalar(explosionFactor)));
+        }
+    
+        // Enable shadows
+        object.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+    
+        this.shadowPlane.receiveShadow = true;
+    
+        // Setup scene
         this.SetupThreePointLighting();
         this.CreateBoundingBoxMesh();
         this.CreateBoundingBoxesAndAnnotations();
         this.Render();
     }
-    
 
     AddExtraObject (object)
     {
@@ -720,6 +883,7 @@ export class Viewer
         this.projectionMode = ProjectionMode.Perspective;
         this.cameraValidator = new CameraValidator ();
         this.scene.add (this.camera);
+        console.log("scene", this.scene);
 
         let canvasElem = this.renderer.domElement;
         this.navigation = new Navigation (canvasElem, camera, {
@@ -727,11 +891,6 @@ export class Viewer
                 this.Render ();
             }
         });
-
-        // // Set the camera movement callback
-        // this.navigation.setCameraMoveCallback(() => {
-        //     this.onCameraMove();
-        // });
 
         this.upVector = new UpVector();
     }
@@ -820,18 +979,34 @@ export class Viewer
     }
 
     animate() {
+        
         requestAnimationFrame(this.animate);
-    
-        if (this.isAnimating && this.mainObject) {
-            this.mainObject.rotation.y += (this.rotationSpeed * Math.PI / 180) * (1 / 60);
-        }
-    
-        this.GetScene().traverse((child) => {
-            if (child.userData.viewCam && child.userData.isAnnotation) {
-                child.lookAt(this.camera.position);
+
+        if (this.isRotating && this.mainObject) {
+            if (this.upVector.direction === Direction.Y) {
+                this.mainObject.rotation.z = 0;
+                this.mainObject.rotation.y += (this.rotationSpeed * Math.PI / 180) * (1 / 60);
+            } else if (this.upVector.direction === Direction.Z) {
+                this.mainObject.rotation.y = 0;
+                this.mainObject.rotation.z += (this.rotationSpeed * Math.PI / 180) * (1 / 60);
             }
-        });
-    
+        }
+
+        if (this.scene && this.camera) {
+            this.GetScene().traverse((child) => {
+                if (child.userData && child.userData.viewCam && child.userData.isAnnotation) {
+                    child.lookAt(this.camera.position);
+                }
+            });
+        }
+
+        // Update the shadow plane position and orientation
+        
+    // One-time shadow plane update when mainObject is ready
+    if (!this.shadowPlaneUpdated && this.mainObject) {
+        this.UpdateShadowPlane();
+        this.shadowPlaneUpdated = true;
+    }
         this.Render();
     }
 
@@ -863,120 +1038,137 @@ export class Viewer
         easeOut();
     }
     
+    /**
+     * Handles explosion effect efficiently.
+     */
     ExplodeModel(factor, duration = 0.5) {
-        if (!this.mainObject) {
-            console.error("Main object is not defined.");
+        if (!this.mainObject || !this.meshChildren.length) {
+            console.error("Main object is not set.");
             return;
         }
-    
-        // Define minimum and maximum explosion multipliers
-        const minMultiplier = 0.2;
-        const maxMultiplier = 1.5;
-    
-        // Compute max explosion distance and clamp it
+
+        // Compute explosion distance
+        const minMultiplier = 0.2, maxMultiplier = 1.5;
         const maxExplosionDistance = THREE.MathUtils.clamp(
             this.boundingSphere.radius * 1.5,
             this.boundingSphere.radius * minMultiplier,
             this.boundingSphere.radius * maxMultiplier
         );
-    
-        // Scale explosion distance based on slider factor (0 to 100)
         const explosionDistance = (factor / 100) * maxExplosionDistance;
-    
-        if (!this.initialPositions || !this.directionVectors) {
-            console.error("Initial positions or direction vectors are not defined.");
-            return;
-        }
-    
-        let index = 0;
-        let totalMeshes = 0;
-        let completedMeshes = 0;
-        let animations = [];
-    
-        this.mainObject.traverse((child) => {
-            if (child.userData.isAnnotation) {
-                console.log("Annotation found, skipping:", child.name);
-                return; // Skip annotations entirely
-            }
-        
-            if (child.isMesh && !child.userData.isAnnotation) {
-                console.log("Processing mesh:", child.name, "Index:", index);
-        
-                if (index >= this.directionVectors.length) {
-                    console.log(`Index ${index} exceeds directionVectors array length (${this.directionVectors.length})`);
-                    return; // Stop processing further to prevent errors
-                }
-        
-                totalMeshes++;
-        
-                const direction = this.directionVectors[index].clone();
-                const newPosition = this.initialPositions[index].clone().add(direction.multiplyScalar(explosionDistance));
-                gsap.killTweensOf(child.position);
-                animations.push(new Promise(resolve => {
-                    gsap.to(child.position, {
-                        x: newPosition.x,
-                        y: newPosition.y,
-                        z: newPosition.z,
-                        duration: duration,
-                        ease: "power2.out",
-                        onComplete: resolve
-                    });
-                }));
-        
-                index++; // Only increment if we actually move the mesh
-            }
-        });
-        Promise.all(animations).then(() => {
-            console.log("All animations are complete");
-            this.OptimizedCameraUpdate();
-        });        
+
+        // If the factor change is too small, ignore animation
+        if (this.lastFactor !== null && Math.abs(factor - this.lastFactor) < 2) return;
+        this.lastFactor = factor;
+
+        // Apply instant position while sliding
+        this.ApplyInstantPosition(explosionDistance);
+
+        // // Clear previous timeout and apply smooth animation after sliding stops
+        // if (this.sliderTimeout) clearTimeout(this.sliderTimeout);
+        // this.sliderTimeout = setTimeout(() => {
+        //     this.ApplySmoothAnimation(explosionDistance, duration);
+        // }, 100);
     }
 
-    // Optimized camera update with throttling
+    /**
+     * Instantly moves objects while sliding.
+     */
+    ApplyInstantPosition(explosionDistance) {
+        for (let i = 0; i < this.meshChildren.length; i++) {
+            const newPosition = this.initialPositions[i].clone().add(
+                this.directionVectors[i].clone().multiplyScalar(explosionDistance)
+            );
+            this.meshChildren[i].child.position.set(newPosition.x, newPosition.y, newPosition.z);
+        }
+        this.ThrottledCameraUpdate();
+    }
+
+    /**
+     * Applies smooth animation after the user stops moving the slider.
+     */
+    ApplySmoothAnimation(explosionDistance, duration) {
+        const animations = [];
+
+        for (let i = 0; i < this.meshChildren.length; i++) {
+            const newPosition = this.initialPositions[i].clone().add(
+                this.directionVectors[i].clone().multiplyScalar(explosionDistance)
+            );
+
+            gsap.killTweensOf(this.meshChildren[i].child.position);
+            animations.push(gsap.to(this.meshChildren[i].child.position, {
+                x: newPosition.x,
+                y: newPosition.y,
+                z: newPosition.z,
+                duration: duration,
+                ease: "power2.out"
+            }));
+        }
+
+        gsap.timeline().add(animations).eventCallback("onComplete", () => {
+            this.OptimizedCameraUpdate();
+        });
+    }
+
+    /**
+     * Optimized camera update with requestAnimationFrame
+     */
     OptimizedCameraUpdate() {
         if (this.cameraUpdatePending) return;
 
         this.cameraUpdatePending = true;
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             this.UpdateCameraAndControls();
             this.cameraUpdatePending = false;
-        }, 100);
+        });
     }
-    
-    // Throttled function to prevent excessive camera updates
+
+    /**
+     * Camera update with throttling.
+     */
     ThrottledCameraUpdate() {
-        if (!this.cameraUpdatePending) {
-            this.cameraUpdatePending = true;
-            requestAnimationFrame(() => {
-                this.UpdateCameraAndControls();
-                this.cameraUpdatePending = false;
-            });
-        }
+        if (this.cameraUpdatePending) return;
+        this.cameraUpdatePending = true;
+        requestAnimationFrame(() => {
+            this.UpdateCameraAndControls();
+            this.cameraUpdatePending = false;
+        });
     }
     
     CreateBoundingBoxMesh() {
-
-        const centerBbox = this.boundingBox.getCenter(new THREE.Vector3());
-        console.log("bounding box", this.boundingBox);
-        const size = this.boundingBox.getSize(new THREE.Vector3());
+        const mainGroup = this.scene.getObjectByName('mainGroup');
+    
+        // Create bounding box in local space of mainGroup
+        const boundingBox = new THREE.Box3().setFromObject(mainGroup);
+        console.log("computed bounding box", boundingBox);
+    
+        const size = boundingBox.getSize(new THREE.Vector3());
+        const center = boundingBox.getCenter(new THREE.Vector3());
+    
+        // Store it if you want to reuse
+        this.boundingBox = boundingBox;
+    
+        // Optional: scale shadowPlane based on bounding box
+        this.shadowPlane.scale.set(size.x * 5, size.y * 5, size.z * 5);
+    
+        // Create the box mesh
         const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
         const boxMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
         const boundingBoxHelper = new THREE.LineSegments(
             new THREE.EdgesGeometry(boxGeometry),
             boxMaterial
         );
-        const cotationCheckbox = document.getElementById('cotationCheckbox');
+    
         boundingBoxHelper.name = 'boundingBoxHelper';
-        boundingBoxHelper.scale.set(size.x, size.y, size.z);
-        if (cotationCheckbox.checked) {
-            boundingBoxHelper.visible = true;
-        } else {
-            boundingBoxHelper.visible = false;
-        }
         boundingBoxHelper.userData.isAnnotation = true;
-        const mainGroup = this.scene.getObjectByName('mainGroup');
+    
+        // Scale and position to match bounding box
+        boundingBoxHelper.scale.set(size.x, size.y, size.z);
+        boundingBoxHelper.position.copy(center);
+    
+        const cotationCheckbox = document.getElementById('cotationCheckbox');
+        boundingBoxHelper.visible = cotationCheckbox.checked;
+    
         mainGroup.add(boundingBoxHelper);
-        //boundingBoxHelper.position.set(0, 0, 0);
     }
 
     CreateBoundingBoxesAndAnnotations() {
@@ -984,8 +1176,9 @@ export class Viewer
         //const mainObject = this.mainModel.GetMainObject().GetRootObject();
         const boundingBox = this.boundingBox;
         console.log("bounding box annotations", boundingBox);
-        const objectHeight = GetObjectHeight(this.mainObject);
         const size = boundingBox.getSize(new THREE.Vector3());
+        const objectHeight = Math.max(size.x, size.y, size.z);  // Get the largest dimension
+        
         this.CreateDoubleSidedArrow(
             new THREE.Vector3(boundingBox.min.x, boundingBox.min.y, boundingBox.min.z),
             new THREE.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z),
@@ -1006,6 +1199,42 @@ export class Viewer
             `${size.z.toFixed(2)} cm`,
             objectHeight
         );
+    }
+
+    // Create text sprite
+    CreateTextSprite(label, position, scale = 1) {
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "64px Arial";
+    
+        // Shadow text
+        ctx.fillStyle = "black";
+        ctx.fillText(label, canvas.width / 2 + 3, canvas.height / 2 + 3);
+    
+        // Main text
+        ctx.fillStyle = "red";
+        ctx.fillText(label, canvas.width / 2, canvas.height / 2);
+    
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(scale * 2, scale, 1);
+        sprite.position.copy(position);
+        sprite.quaternion.copy(this.camera.quaternion);
+        sprite.renderOrder = 999;
+        sprite.frustumCulled = false;
+
+        return sprite;
     }
 
     CreateDoubleSidedArrow(startPoint, endPoint, label, objectHeight, color = 0x37b6ff, textSizePercent = 0.07) {
@@ -1035,39 +1264,44 @@ export class Viewer
         }
         mainGroup.add(arrowHelper2);
 
-        const loader = new FontLoader();
-        loader.load(
-            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
-            function (font) {
-                const textSize = objectHeight * textSizePercent;
-                const textGeometry = new TextGeometry(label, {
-                    font: font,
-                    size: textSize,
-                    depth: 0.02,
-                    curveSegments: 12,
-                });
+        const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
+        // Add text sprite near cube
+        const text = this.CreateTextSprite(label, midPoint, 0.5);
+        this.scene.add(text);
 
-                const textMaterial = new THREE.MeshBasicMaterial({ color });
-                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
-                textMesh.position.copy(midPoint);
-                textMesh.userData.isAnnotation = true;
-                textMesh.userData.viewCam = true;
-                textMesh.name = 'textMesh';
-                const cotationCheckbox = document.getElementById('cotationCheckbox');
-                if (cotationCheckbox.checked) {
-                    textMesh.visible = true;
-                } else {
-                    textMesh.visible = false;
-                }
-                textMeshes.push(textMesh);
-                mainGroup.add(textMesh);
-            },
-            undefined,
-            function (error) {
-                console.error('Error loading font:', error);
-            }
-        );
+        // const loader = new FontLoader();
+        // loader.load(
+        //     'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
+        //     function (font) {
+        //         const textSize = objectHeight * textSizePercent;
+        //         const textGeometry = new TextGeometry(label, {
+        //             font: font,
+        //             size: textSize,
+        //             depth: 0.02,
+        //             curveSegments: 12,
+        //         });
+
+        //         const textMaterial = new THREE.MeshBasicMaterial({ color });
+        //         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        //         const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
+        //         textMesh.position.copy(midPoint);
+        //         textMesh.userData.isAnnotation = true;
+        //         textMesh.userData.viewCam = true;
+        //         textMesh.name = 'textMesh';
+        //         const cotationCheckbox = document.getElementById('cotationCheckbox');
+        //         if (cotationCheckbox.checked) {
+        //             textMesh.visible = true;
+        //         } else {
+        //             textMesh.visible = false;
+        //         }
+        //         textMeshes.push(textMesh);
+        //         mainGroup.add(textMesh);
+        //     },
+        //     undefined,
+        //     function (error) {
+        //         console.error('Error loading font:', error);
+        //     }
+        // );
     }
 
     onMouseDown(event) {
@@ -1181,5 +1415,51 @@ export class Viewer
         // if (boundingSphere.radius < this.navigation.minimumDistance) {
         //     this.FitSphereToWindow(boundingSphere, false, 30, true), false;
         // }
+    }
+
+    AddShadowPlane() {
+        // Remove existing shadow plane if it exists
+        const existingShadowPlane = this.scene.getObjectByName('shadowPlane');
+        if (existingShadowPlane) {
+            this.camera.remove(existingShadowPlane);
+        }
+    
+        // Create the plane geometry and material
+        const planeGeometry = new THREE.PlaneGeometry(10000, 10000);
+        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.5 }); // Use ShadowMaterial for receiving shadows
+        //const planeMaterial = new THREE.MeshStandardMaterial({ color: 0xD5D5D5, side: THREE.DoubleSide });
+        this.shadowPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+        this.shadowPlane.receiveShadow = true; // Enable shadow receiving
+        this.shadowPlane.name = 'shadowPlane';
+        this.shadowPlane.visible = true; // Make it visible
+    
+        // Add the plane to the scene
+        this.scene.add(this.shadowPlane);
+    
+        // Calculate the distance from the camera to the origin (0, 0, 0)
+        const distanceToOrigin = this.camera.position.length();
+    
+        // Set the plane's position to (0, 0, -distanceToOrigin) relative to the camera
+        this.shadowPlane.position.set(0, 0, -distanceToOrigin);
+    }
+
+    UpdateShadowPlane() {
+        if (!this.shadowPlane || !this.mainObject) return;
+
+        // Get the bounding box of the main object
+        const boundingBox = new THREE.Box3().setFromObject(this.mainObject);
+        const boundingSphere = new THREE.Sphere();
+        boundingBox.getBoundingSphere(boundingSphere);
+
+        // Calculate the distance from the camera to the origin (0, 0, 0)
+        const distanceToOrigin = this.camera.position.length();
+
+        // Set the plane's position to (0, 0, -distanceToOrigin - boundingSphere.radius) relative to the camera
+        this.shadowPlane.position.set(0, 0, -distanceToOrigin - boundingSphere.radius);
+
+        // // Ensure the plane is perpendicular to the camera
+        // const cameraDirection = new THREE.Vector3();
+        // this.camera.getWorldDirection(cameraDirection);
+        // this.shadowPlane.lookAt(this.camera.position.clone().add(cameraDirection));
     }
 }
