@@ -1,6 +1,8 @@
 import { RunTaskAsync } from '../core/taskrunner.js';
 import { FileSource, GetFileName } from '../io/fileutils.js';
 import { RGBColor } from '../model/color.js';
+import { Model } from '../model/model.js'; // Adjust path if needed
+
 import { ImporterFile, ImporterFileList } from './importerfiles.js';
 import { Importer3dm } from './importer3dm.js';
 import { Importer3ds } from './importer3ds.js';
@@ -159,34 +161,91 @@ export class Importer
         });
     }
 
-    ImportLoadedFiles (settings, callbacks)
-    {
-        let importableFiles = this.GetImportableFiles (this.fileList);
+    async ImportLoadedFiles(settings, callbacks) {
+        const importableFiles = this.GetImportableFiles(this.fileList);
         if (importableFiles.length === 0) {
-            callbacks.onImportError (new ImportError (ImportErrorCode.NoImportableFile));
+            callbacks.onImportError(new ImportError(ImportErrorCode.NoImportableFile));
             return;
         }
 
-        if (importableFiles.length === 1 || !callbacks.onSelectMainFile) {
-            let mainFile = importableFiles[0];
-            this.ImportLoadedMainFile (mainFile, settings, callbacks);
-        } else {
-            let fileNames = importableFiles.map (importableFile => importableFile.file.name);
-            callbacks.onSelectMainFile (fileNames, (mainFileIndex) => {
-                if (mainFileIndex === null) {
-                    callbacks.onImportError (new ImportError (ImportErrorCode.NoImportableFile));
-                    return;
-                }
-                RunTaskAsync (() => {
-                    let mainFile = importableFiles[mainFileIndex];
-                    this.ImportLoadedMainFile (mainFile, settings, callbacks);
+        const mergedModel = new Model();
+        const usedFiles = [];
+        const missingFiles = [];
+
+        for (const importableFile of importableFiles) {
+            await new Promise((resolve, reject) => {
+                const importer = importableFile.importer;
+                const file = importableFile.file;
+                const fileAccessor = new ImporterFileAccessor(fileName => {
+                    const subFile = this.fileList.FindFileByPath(fileName);
+                    if (!subFile || !subFile.content) {
+                        missingFiles.push(fileName);
+                        return null;
+                    }
+                    usedFiles.push(fileName);
+                    return subFile.content;
+                });
+
+                importer.Import(file.name, file.extension, file.content, {
+                    getDefaultLineMaterialColor: () => settings.defaultLineColor,
+                    getDefaultMaterialColor: () => settings.defaultColor,
+                    getFileBuffer: fileAccessor.GetFileBuffer.bind(fileAccessor),
+                    onSuccess: () => {
+                        const model = importer.GetModel();
+                        if (model) {
+                            mergedModel.MergeModel(model);
+                        }
+                        resolve();
+                    },
+                    onError: () => {
+                        reject(new Error(importer.GetErrorMessage()));
+                    },
+                    onComplete: () => {
+                        importer.Clear();
+                    }
                 });
             });
         }
+
+        const result = new ImportResult();
+        result.model = mergedModel;
+        result.usedFiles = usedFiles;
+        result.missingFiles = missingFiles;
+        result.mainFile = importableFiles[0].file.name;
+        result.upVector = null;
+        callbacks.onImportSuccess(result);
     }
+
+    // ImportLoadedFiles (settings, callbacks)
+    // {
+    //     let importableFiles = this.GetImportableFiles (this.fileList);
+    //     console.log ('Importable files:', importableFiles);
+    //     if (importableFiles.length === 0) {
+    //         callbacks.onImportError (new ImportError (ImportErrorCode.NoImportableFile));
+    //         return;
+    //     }
+
+    //     if (importableFiles.length === 1 || !callbacks.onSelectMainFile) {
+    //         let mainFile = importableFiles[0];
+    //         this.ImportLoadedMainFile (mainFile, settings, callbacks);
+    //     } else {
+    //         let fileNames = importableFiles.map (importableFile => importableFile.file.name);
+    //         callbacks.onSelectMainFile (fileNames, (mainFileIndex) => {
+    //             if (mainFileIndex === null) {
+    //                 callbacks.onImportError (new ImportError (ImportErrorCode.NoImportableFile));
+    //                 return;
+    //             }
+    //             RunTaskAsync (() => {
+    //                 let mainFile = importableFiles[mainFileIndex];
+    //                 this.ImportLoadedMainFile (mainFile, settings, callbacks);
+    //             });
+    //         });
+    //     }
+    // }
 
     ImportLoadedMainFile (mainFile, settings, callbacks)
     {
+        console.log ('Importing main file:', mainFile.file.name);
         if (mainFile === null || mainFile.file === null || mainFile.file.content === null) {
             let error = new ImportError (ImportErrorCode.FailedToLoadFile);
             if (mainFile !== null && mainFile.file !== null) {
@@ -288,6 +347,7 @@ export class Importer
 
     GetImportableFiles (fileList)
     {
+        console.log ('Getting importable files from file list:', fileList);
         function FindImporter (file, importers)
         {
             for (let importerIndex = 0; importerIndex < importers.length; importerIndex++) {

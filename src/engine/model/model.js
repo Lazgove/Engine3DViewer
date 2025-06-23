@@ -251,4 +251,33 @@ export class Model extends ModelObject3D
         return center;
     }
 
+    MergeModel (otherModel)
+    {
+        const meshIndexOffset = this.meshes.length;
+
+        // Merge materials
+        const materialIndexMap = new Map();
+        otherModel.materials.forEach((material, index) => {
+            const newIndex = this.AddMaterial(material);
+            materialIndexMap.set(index, newIndex);
+        });
+
+        // Merge meshes
+        otherModel.meshes.forEach((mesh) => {
+            // Update material index of the mesh
+            if (materialIndexMap.has(mesh.materialIndex)) {
+                mesh.materialIndex = materialIndexMap.get(mesh.materialIndex);
+            }
+            this.AddMesh(mesh);
+        });
+
+        // Merge nodes (just flatten all into root)
+        otherModel.root.Enumerate((node) => {
+            for (let meshIndex of node.GetMeshIndices()) {
+                this.root.AddMeshIndex(meshIndex + meshIndexOffset);
+            }
+        });
+    }
+
+
 }

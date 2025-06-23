@@ -8,6 +8,9 @@ import { ThreeModelLoader } from '../threejs/threemodelloader.js';
 import { Viewer } from './viewer.js';
 import { EnvironmentSettings } from './shadingmodel.js';
 import { Loc } from '../core/localization.js';
+import * as THREE from 'three';
+import { Mesh } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
  * This is the main object for embedding the viewer on a website.
@@ -100,6 +103,64 @@ export class EmbeddedViewer
         this.LoadModelFromInputFiles (inputFiles);
     }
 
+    MergeSubMeshesByMaterial(parentMesh) {
+        const materialMap = new Map();
+
+        // Traverse and collect meshes by material index
+        parentMesh.updateMatrixWorld(true);
+        parentMesh.traverse(child => {
+            if (child.isMesh && child.geometry && child.material) {
+            const mat = child.material;
+            //const key = mat.uuid;
+
+            let key;
+            if (Array.isArray(mat)) {
+                key = mat.map(m => m.uuid).join('-'); // create a key from all material UUIDs
+            } else {
+                key = mat.uuid;
+            }
+
+            console.log('material:', mat, 'key:', key);
+
+            if (!materialMap.has(key)) {
+                materialMap.set(key, {
+                material: mat,
+                geometries: [],
+                });
+            }
+
+            const geom = child.geometry.clone();
+            //geom.toNonIndexed();
+
+            geom.applyMatrix4(child.matrixWorld);
+            materialMap.get(key).geometries.push(geom);
+            }
+        });
+
+        // Merge geometries per material and create merged meshes
+        const mergedMeshes = [];
+        for (const { material, geometries } of materialMap.values()) {
+            if (geometries.length === 0) continue;
+            
+            const mergedGeometry = mergeGeometries(geometries, true);
+            const mergedMesh = new Mesh(mergedGeometry, material);
+
+            let key;
+            if (Array.isArray(material)) {
+                key = material.map(m => m.uuid).join('-'); // create a key from all material UUIDs
+            } else {
+                key = material.uuid;
+            }
+
+            mergedMesh.name = `MergedMesh_${key}`;
+            mergedMeshes.push(mergedMesh);
+            console.log('mergedMesh:', mergedMesh, 'for key:', key);
+            console.log(`Merged mesh created for material: ${material.name || key}`);
+        }
+        console.log("Merged meshes:", mergedMeshes);
+        return mergedMeshes;
+    }
+
     /**
      * Loads the model based on a list of {@link InputFile} objects. This method is used
      * internally, you should use LoadModelFromUrlList or LoadModelFromFileList instead.
@@ -122,6 +183,7 @@ export class EmbeddedViewer
 
         this.model = null;
         let progressDiv = null;
+        console.log("Loading model from input files:", inputFiles);
         this.modelLoader.LoadModel (inputFiles, settings, {
             onLoadStart : () => {
                 this.canvas.style.display = 'none';

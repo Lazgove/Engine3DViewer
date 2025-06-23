@@ -65213,6 +65213,73 @@ function calcVolumePoint( p, q, r, U, V, W, P, u, v, w, target ) {
 
 /***/ }),
 
+/***/ "./node_modules/three/examples/jsm/geometries/TextGeometry.js":
+/*!********************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/geometries/TextGeometry.js ***!
+  \********************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   TextGeometry: () => (/* binding */ TextGeometry)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+/**
+ * Text = 3D Text
+ *
+ * parameters = {
+ *  font: <THREE.Font>, // font
+ *
+ *  size: <float>, // size of the text
+ *  depth: <float>, // thickness to extrude text
+ *  curveSegments: <int>, // number of points on the curves
+ *
+ *  bevelEnabled: <bool>, // turn on bevel
+ *  bevelThickness: <float>, // how deep into text bevel goes
+ *  bevelSize: <float>, // how far from text outline (including bevelOffset) is bevel
+ *  bevelOffset: <float> // how far from text outline does bevel start
+ * }
+ */
+
+
+
+class TextGeometry extends three__WEBPACK_IMPORTED_MODULE_0__.ExtrudeGeometry {
+
+	constructor( text, parameters = {} ) {
+
+		const font = parameters.font;
+
+		if ( font === undefined ) {
+
+			super(); // generate default extrude geometry
+
+		} else {
+
+			const shapes = font.generateShapes( text, parameters.size );
+
+			// defaults
+
+			if ( parameters.depth === undefined ) parameters.depth = 50;
+			if ( parameters.bevelThickness === undefined ) parameters.bevelThickness = 10;
+			if ( parameters.bevelSize === undefined ) parameters.bevelSize = 8;
+			if ( parameters.bevelEnabled === undefined ) parameters.bevelEnabled = false;
+
+			super( shapes, parameters );
+
+		}
+
+		this.type = 'TextGeometry';
+
+	}
+
+}
+
+
+
+
+
+/***/ }),
+
 /***/ "./node_modules/three/examples/jsm/libs/chevrotain.module.min.js":
 /*!***********************************************************************!*\
   !*** ./node_modules/three/examples/jsm/libs/chevrotain.module.min.js ***!
@@ -78591,6 +78658,201 @@ function slice( a, b, from, to ) {
 
 /***/ }),
 
+/***/ "./node_modules/three/examples/jsm/loaders/FontLoader.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/loaders/FontLoader.js ***!
+  \***************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Font: () => (/* binding */ Font),
+/* harmony export */   FontLoader: () => (/* binding */ FontLoader)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+
+
+class FontLoader extends three__WEBPACK_IMPORTED_MODULE_0__.Loader {
+
+	constructor( manager ) {
+
+		super( manager );
+
+	}
+
+	load( url, onLoad, onProgress, onError ) {
+
+		const scope = this;
+
+		const loader = new three__WEBPACK_IMPORTED_MODULE_0__.FileLoader( this.manager );
+		loader.setPath( this.path );
+		loader.setRequestHeader( this.requestHeader );
+		loader.setWithCredentials( this.withCredentials );
+		loader.load( url, function ( text ) {
+
+			const font = scope.parse( JSON.parse( text ) );
+
+			if ( onLoad ) onLoad( font );
+
+		}, onProgress, onError );
+
+	}
+
+	parse( json ) {
+
+		return new Font( json );
+
+	}
+
+}
+
+//
+
+class Font {
+
+	constructor( data ) {
+
+		this.isFont = true;
+
+		this.type = 'Font';
+
+		this.data = data;
+
+	}
+
+	generateShapes( text, size = 100 ) {
+
+		const shapes = [];
+		const paths = createPaths( text, size, this.data );
+
+		for ( let p = 0, pl = paths.length; p < pl; p ++ ) {
+
+			shapes.push( ...paths[ p ].toShapes() );
+
+		}
+
+		return shapes;
+
+	}
+
+}
+
+function createPaths( text, size, data ) {
+
+	const chars = Array.from( text );
+	const scale = size / data.resolution;
+	const line_height = ( data.boundingBox.yMax - data.boundingBox.yMin + data.underlineThickness ) * scale;
+
+	const paths = [];
+
+	let offsetX = 0, offsetY = 0;
+
+	for ( let i = 0; i < chars.length; i ++ ) {
+
+		const char = chars[ i ];
+
+		if ( char === '\n' ) {
+
+			offsetX = 0;
+			offsetY -= line_height;
+
+		} else {
+
+			const ret = createPath( char, scale, offsetX, offsetY, data );
+			offsetX += ret.offsetX;
+			paths.push( ret.path );
+
+		}
+
+	}
+
+	return paths;
+
+}
+
+function createPath( char, scale, offsetX, offsetY, data ) {
+
+	const glyph = data.glyphs[ char ] || data.glyphs[ '?' ];
+
+	if ( ! glyph ) {
+
+		console.error( 'THREE.Font: character "' + char + '" does not exists in font family ' + data.familyName + '.' );
+
+		return;
+
+	}
+
+	const path = new three__WEBPACK_IMPORTED_MODULE_0__.ShapePath();
+
+	let x, y, cpx, cpy, cpx1, cpy1, cpx2, cpy2;
+
+	if ( glyph.o ) {
+
+		const outline = glyph._cachedOutline || ( glyph._cachedOutline = glyph.o.split( ' ' ) );
+
+		for ( let i = 0, l = outline.length; i < l; ) {
+
+			const action = outline[ i ++ ];
+
+			switch ( action ) {
+
+				case 'm': // moveTo
+
+					x = outline[ i ++ ] * scale + offsetX;
+					y = outline[ i ++ ] * scale + offsetY;
+
+					path.moveTo( x, y );
+
+					break;
+
+				case 'l': // lineTo
+
+					x = outline[ i ++ ] * scale + offsetX;
+					y = outline[ i ++ ] * scale + offsetY;
+
+					path.lineTo( x, y );
+
+					break;
+
+				case 'q': // quadraticCurveTo
+
+					cpx = outline[ i ++ ] * scale + offsetX;
+					cpy = outline[ i ++ ] * scale + offsetY;
+					cpx1 = outline[ i ++ ] * scale + offsetX;
+					cpy1 = outline[ i ++ ] * scale + offsetY;
+
+					path.quadraticCurveTo( cpx1, cpy1, cpx, cpy );
+
+					break;
+
+				case 'b': // bezierCurveTo
+
+					cpx = outline[ i ++ ] * scale + offsetX;
+					cpy = outline[ i ++ ] * scale + offsetY;
+					cpx1 = outline[ i ++ ] * scale + offsetX;
+					cpy1 = outline[ i ++ ] * scale + offsetY;
+					cpx2 = outline[ i ++ ] * scale + offsetX;
+					cpy2 = outline[ i ++ ] * scale + offsetY;
+
+					path.bezierCurveTo( cpx1, cpy1, cpx2, cpy2, cpx, cpy );
+
+					break;
+
+			}
+
+		}
+
+	}
+
+	return { offsetX: glyph.ha * scale, path: path };
+
+}
+
+
+
+
+/***/ }),
+
 /***/ "./node_modules/three/examples/jsm/loaders/SVGLoader.js":
 /*!**************************************************************!*\
   !*** ./node_modules/three/examples/jsm/loaders/SVGLoader.js ***!
@@ -87193,6 +87455,1384 @@ const LuminosityHighPassShader = {
 
 /***/ }),
 
+/***/ "./node_modules/three/examples/jsm/utils/BufferGeometryUtils.js":
+/*!**********************************************************************!*\
+  !*** ./node_modules/three/examples/jsm/utils/BufferGeometryUtils.js ***!
+  \**********************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   computeMikkTSpaceTangents: () => (/* binding */ computeMikkTSpaceTangents),
+/* harmony export */   computeMorphedAttributes: () => (/* binding */ computeMorphedAttributes),
+/* harmony export */   deepCloneAttribute: () => (/* binding */ deepCloneAttribute),
+/* harmony export */   deinterleaveAttribute: () => (/* binding */ deinterleaveAttribute),
+/* harmony export */   deinterleaveGeometry: () => (/* binding */ deinterleaveGeometry),
+/* harmony export */   estimateBytesUsed: () => (/* binding */ estimateBytesUsed),
+/* harmony export */   interleaveAttributes: () => (/* binding */ interleaveAttributes),
+/* harmony export */   mergeAttributes: () => (/* binding */ mergeAttributes),
+/* harmony export */   mergeGeometries: () => (/* binding */ mergeGeometries),
+/* harmony export */   mergeGroups: () => (/* binding */ mergeGroups),
+/* harmony export */   mergeVertices: () => (/* binding */ mergeVertices),
+/* harmony export */   toCreasedNormals: () => (/* binding */ toCreasedNormals),
+/* harmony export */   toTrianglesDrawMode: () => (/* binding */ toTrianglesDrawMode)
+/* harmony export */ });
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+
+
+function computeMikkTSpaceTangents( geometry, MikkTSpace, negateSign = true ) {
+
+	if ( ! MikkTSpace || ! MikkTSpace.isReady ) {
+
+		throw new Error( 'BufferGeometryUtils: Initialized MikkTSpace library required.' );
+
+	}
+
+	if ( ! geometry.hasAttribute( 'position' ) || ! geometry.hasAttribute( 'normal' ) || ! geometry.hasAttribute( 'uv' ) ) {
+
+		throw new Error( 'BufferGeometryUtils: Tangents require "position", "normal", and "uv" attributes.' );
+
+	}
+
+	function getAttributeArray( attribute ) {
+
+		if ( attribute.normalized || attribute.isInterleavedBufferAttribute ) {
+
+			const dstArray = new Float32Array( attribute.count * attribute.itemSize );
+
+			for ( let i = 0, j = 0; i < attribute.count; i ++ ) {
+
+				dstArray[ j ++ ] = attribute.getX( i );
+				dstArray[ j ++ ] = attribute.getY( i );
+
+				if ( attribute.itemSize > 2 ) {
+
+					dstArray[ j ++ ] = attribute.getZ( i );
+
+				}
+
+			}
+
+			return dstArray;
+
+		}
+
+		if ( attribute.array instanceof Float32Array ) {
+
+			return attribute.array;
+
+		}
+
+		return new Float32Array( attribute.array );
+
+	}
+
+	// MikkTSpace algorithm requires non-indexed input.
+
+	const _geometry = geometry.index ? geometry.toNonIndexed() : geometry;
+
+	// Compute vertex tangents.
+
+	const tangents = MikkTSpace.generateTangents(
+
+		getAttributeArray( _geometry.attributes.position ),
+		getAttributeArray( _geometry.attributes.normal ),
+		getAttributeArray( _geometry.attributes.uv )
+
+	);
+
+	// Texture coordinate convention of glTF differs from the apparent
+	// default of the MikkTSpace library; .w component must be flipped.
+
+	if ( negateSign ) {
+
+		for ( let i = 3; i < tangents.length; i += 4 ) {
+
+			tangents[ i ] *= - 1;
+
+		}
+
+	}
+
+	//
+
+	_geometry.setAttribute( 'tangent', new three__WEBPACK_IMPORTED_MODULE_0__.BufferAttribute( tangents, 4 ) );
+
+	if ( geometry !== _geometry ) {
+
+		geometry.copy( _geometry );
+
+	}
+
+	return geometry;
+
+}
+
+/**
+ * @param  {Array<BufferGeometry>} geometries
+ * @param  {Boolean} useGroups
+ * @return {BufferGeometry}
+ */
+function mergeGeometries( geometries, useGroups = false ) {
+
+	const isIndexed = geometries[ 0 ].index !== null;
+
+	const attributesUsed = new Set( Object.keys( geometries[ 0 ].attributes ) );
+	const morphAttributesUsed = new Set( Object.keys( geometries[ 0 ].morphAttributes ) );
+
+	const attributes = {};
+	const morphAttributes = {};
+
+	const morphTargetsRelative = geometries[ 0 ].morphTargetsRelative;
+
+	const mergedGeometry = new three__WEBPACK_IMPORTED_MODULE_0__.BufferGeometry();
+
+	let offset = 0;
+
+	for ( let i = 0; i < geometries.length; ++ i ) {
+
+		const geometry = geometries[ i ];
+		let attributesCount = 0;
+
+		// ensure that all geometries are indexed, or none
+
+		if ( isIndexed !== ( geometry.index !== null ) ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .mergeGeometries() failed with geometry at index ' + i + '. All geometries must have compatible attributes; make sure index attribute exists among all geometries, or in none of them.' );
+			return null;
+
+		}
+
+		// gather attributes, exit early if they're different
+
+		for ( const name in geometry.attributes ) {
+
+			if ( ! attributesUsed.has( name ) ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeGeometries() failed with geometry at index ' + i + '. All geometries must have compatible attributes; make sure "' + name + '" attribute exists among all geometries, or in none of them.' );
+				return null;
+
+			}
+
+			if ( attributes[ name ] === undefined ) attributes[ name ] = [];
+
+			attributes[ name ].push( geometry.attributes[ name ] );
+
+			attributesCount ++;
+
+		}
+
+		// ensure geometries have the same number of attributes
+
+		if ( attributesCount !== attributesUsed.size ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .mergeGeometries() failed with geometry at index ' + i + '. Make sure all geometries have the same number of attributes.' );
+			return null;
+
+		}
+
+		// gather morph attributes, exit early if they're different
+
+		if ( morphTargetsRelative !== geometry.morphTargetsRelative ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .mergeGeometries() failed with geometry at index ' + i + '. .morphTargetsRelative must be consistent throughout all geometries.' );
+			return null;
+
+		}
+
+		for ( const name in geometry.morphAttributes ) {
+
+			if ( ! morphAttributesUsed.has( name ) ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeGeometries() failed with geometry at index ' + i + '.  .morphAttributes must be consistent throughout all geometries.' );
+				return null;
+
+			}
+
+			if ( morphAttributes[ name ] === undefined ) morphAttributes[ name ] = [];
+
+			morphAttributes[ name ].push( geometry.morphAttributes[ name ] );
+
+		}
+
+		if ( useGroups ) {
+
+			let count;
+
+			if ( isIndexed ) {
+
+				count = geometry.index.count;
+
+			} else if ( geometry.attributes.position !== undefined ) {
+
+				count = geometry.attributes.position.count;
+
+			} else {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeGeometries() failed with geometry at index ' + i + '. The geometry must have either an index or a position attribute' );
+				return null;
+
+			}
+
+			mergedGeometry.addGroup( offset, count, i );
+
+			offset += count;
+
+		}
+
+	}
+
+	// merge indices
+
+	if ( isIndexed ) {
+
+		let indexOffset = 0;
+		const mergedIndex = [];
+
+		for ( let i = 0; i < geometries.length; ++ i ) {
+
+			const index = geometries[ i ].index;
+
+			for ( let j = 0; j < index.count; ++ j ) {
+
+				mergedIndex.push( index.getX( j ) + indexOffset );
+
+			}
+
+			indexOffset += geometries[ i ].attributes.position.count;
+
+		}
+
+		mergedGeometry.setIndex( mergedIndex );
+
+	}
+
+	// merge attributes
+
+	for ( const name in attributes ) {
+
+		const mergedAttribute = mergeAttributes( attributes[ name ] );
+
+		if ( ! mergedAttribute ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .mergeGeometries() failed while trying to merge the ' + name + ' attribute.' );
+			return null;
+
+		}
+
+		mergedGeometry.setAttribute( name, mergedAttribute );
+
+	}
+
+	// merge morph attributes
+
+	for ( const name in morphAttributes ) {
+
+		const numMorphTargets = morphAttributes[ name ][ 0 ].length;
+
+		if ( numMorphTargets === 0 ) break;
+
+		mergedGeometry.morphAttributes = mergedGeometry.morphAttributes || {};
+		mergedGeometry.morphAttributes[ name ] = [];
+
+		for ( let i = 0; i < numMorphTargets; ++ i ) {
+
+			const morphAttributesToMerge = [];
+
+			for ( let j = 0; j < morphAttributes[ name ].length; ++ j ) {
+
+				morphAttributesToMerge.push( morphAttributes[ name ][ j ][ i ] );
+
+			}
+
+			const mergedMorphAttribute = mergeAttributes( morphAttributesToMerge );
+
+			if ( ! mergedMorphAttribute ) {
+
+				console.error( 'THREE.BufferGeometryUtils: .mergeGeometries() failed while trying to merge the ' + name + ' morphAttribute.' );
+				return null;
+
+			}
+
+			mergedGeometry.morphAttributes[ name ].push( mergedMorphAttribute );
+
+		}
+
+	}
+
+	return mergedGeometry;
+
+}
+
+/**
+ * @param {Array<BufferAttribute>} attributes
+ * @return {BufferAttribute}
+ */
+function mergeAttributes( attributes ) {
+
+	let TypedArray;
+	let itemSize;
+	let normalized;
+	let gpuType = - 1;
+	let arrayLength = 0;
+
+	for ( let i = 0; i < attributes.length; ++ i ) {
+
+		const attribute = attributes[ i ];
+
+		if ( TypedArray === undefined ) TypedArray = attribute.array.constructor;
+		if ( TypedArray !== attribute.array.constructor ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .mergeAttributes() failed. BufferAttribute.array must be of consistent array types across matching attributes.' );
+			return null;
+
+		}
+
+		if ( itemSize === undefined ) itemSize = attribute.itemSize;
+		if ( itemSize !== attribute.itemSize ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .mergeAttributes() failed. BufferAttribute.itemSize must be consistent across matching attributes.' );
+			return null;
+
+		}
+
+		if ( normalized === undefined ) normalized = attribute.normalized;
+		if ( normalized !== attribute.normalized ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .mergeAttributes() failed. BufferAttribute.normalized must be consistent across matching attributes.' );
+			return null;
+
+		}
+
+		if ( gpuType === - 1 ) gpuType = attribute.gpuType;
+		if ( gpuType !== attribute.gpuType ) {
+
+			console.error( 'THREE.BufferGeometryUtils: .mergeAttributes() failed. BufferAttribute.gpuType must be consistent across matching attributes.' );
+			return null;
+
+		}
+
+		arrayLength += attribute.count * itemSize;
+
+	}
+
+	const array = new TypedArray( arrayLength );
+	const result = new three__WEBPACK_IMPORTED_MODULE_0__.BufferAttribute( array, itemSize, normalized );
+	let offset = 0;
+
+	for ( let i = 0; i < attributes.length; ++ i ) {
+
+		const attribute = attributes[ i ];
+		if ( attribute.isInterleavedBufferAttribute ) {
+
+			const tupleOffset = offset / itemSize;
+			for ( let j = 0, l = attribute.count; j < l; j ++ ) {
+
+				for ( let c = 0; c < itemSize; c ++ ) {
+
+					const value = attribute.getComponent( j, c );
+					result.setComponent( j + tupleOffset, c, value );
+
+				}
+
+			}
+
+		} else {
+
+			array.set( attribute.array, offset );
+
+		}
+
+		offset += attribute.count * itemSize;
+
+	}
+
+	if ( gpuType !== undefined ) {
+
+		result.gpuType = gpuType;
+
+	}
+
+	return result;
+
+}
+
+/**
+ * @param {BufferAttribute} attribute
+ * @return {BufferAttribute}
+ */
+function deepCloneAttribute( attribute ) {
+
+	if ( attribute.isInstancedInterleavedBufferAttribute || attribute.isInterleavedBufferAttribute ) {
+
+		return deinterleaveAttribute( attribute );
+
+	}
+
+	if ( attribute.isInstancedBufferAttribute ) {
+
+		return new three__WEBPACK_IMPORTED_MODULE_0__.InstancedBufferAttribute().copy( attribute );
+
+	}
+
+	return new three__WEBPACK_IMPORTED_MODULE_0__.BufferAttribute().copy( attribute );
+
+}
+
+/**
+ * @param {Array<BufferAttribute>} attributes
+ * @return {Array<InterleavedBufferAttribute>}
+ */
+function interleaveAttributes( attributes ) {
+
+	// Interleaves the provided attributes into an InterleavedBuffer and returns
+	// a set of InterleavedBufferAttributes for each attribute
+	let TypedArray;
+	let arrayLength = 0;
+	let stride = 0;
+
+	// calculate the length and type of the interleavedBuffer
+	for ( let i = 0, l = attributes.length; i < l; ++ i ) {
+
+		const attribute = attributes[ i ];
+
+		if ( TypedArray === undefined ) TypedArray = attribute.array.constructor;
+		if ( TypedArray !== attribute.array.constructor ) {
+
+			console.error( 'AttributeBuffers of different types cannot be interleaved' );
+			return null;
+
+		}
+
+		arrayLength += attribute.array.length;
+		stride += attribute.itemSize;
+
+	}
+
+	// Create the set of buffer attributes
+	const interleavedBuffer = new three__WEBPACK_IMPORTED_MODULE_0__.InterleavedBuffer( new TypedArray( arrayLength ), stride );
+	let offset = 0;
+	const res = [];
+	const getters = [ 'getX', 'getY', 'getZ', 'getW' ];
+	const setters = [ 'setX', 'setY', 'setZ', 'setW' ];
+
+	for ( let j = 0, l = attributes.length; j < l; j ++ ) {
+
+		const attribute = attributes[ j ];
+		const itemSize = attribute.itemSize;
+		const count = attribute.count;
+		const iba = new three__WEBPACK_IMPORTED_MODULE_0__.InterleavedBufferAttribute( interleavedBuffer, itemSize, offset, attribute.normalized );
+		res.push( iba );
+
+		offset += itemSize;
+
+		// Move the data for each attribute into the new interleavedBuffer
+		// at the appropriate offset
+		for ( let c = 0; c < count; c ++ ) {
+
+			for ( let k = 0; k < itemSize; k ++ ) {
+
+				iba[ setters[ k ] ]( c, attribute[ getters[ k ] ]( c ) );
+
+			}
+
+		}
+
+	}
+
+	return res;
+
+}
+
+// returns a new, non-interleaved version of the provided attribute
+function deinterleaveAttribute( attribute ) {
+
+	const cons = attribute.data.array.constructor;
+	const count = attribute.count;
+	const itemSize = attribute.itemSize;
+	const normalized = attribute.normalized;
+
+	const array = new cons( count * itemSize );
+	let newAttribute;
+	if ( attribute.isInstancedInterleavedBufferAttribute ) {
+
+		newAttribute = new three__WEBPACK_IMPORTED_MODULE_0__.InstancedBufferAttribute( array, itemSize, normalized, attribute.meshPerAttribute );
+
+	} else {
+
+		newAttribute = new three__WEBPACK_IMPORTED_MODULE_0__.BufferAttribute( array, itemSize, normalized );
+
+	}
+
+	for ( let i = 0; i < count; i ++ ) {
+
+		newAttribute.setX( i, attribute.getX( i ) );
+
+		if ( itemSize >= 2 ) {
+
+			newAttribute.setY( i, attribute.getY( i ) );
+
+		}
+
+		if ( itemSize >= 3 ) {
+
+			newAttribute.setZ( i, attribute.getZ( i ) );
+
+		}
+
+		if ( itemSize >= 4 ) {
+
+			newAttribute.setW( i, attribute.getW( i ) );
+
+		}
+
+	}
+
+	return newAttribute;
+
+}
+
+// deinterleaves all attributes on the geometry
+function deinterleaveGeometry( geometry ) {
+
+	const attributes = geometry.attributes;
+	const morphTargets = geometry.morphTargets;
+	const attrMap = new Map();
+
+	for ( const key in attributes ) {
+
+		const attr = attributes[ key ];
+		if ( attr.isInterleavedBufferAttribute ) {
+
+			if ( ! attrMap.has( attr ) ) {
+
+				attrMap.set( attr, deinterleaveAttribute( attr ) );
+
+			}
+
+			attributes[ key ] = attrMap.get( attr );
+
+		}
+
+	}
+
+	for ( const key in morphTargets ) {
+
+		const attr = morphTargets[ key ];
+		if ( attr.isInterleavedBufferAttribute ) {
+
+			if ( ! attrMap.has( attr ) ) {
+
+				attrMap.set( attr, deinterleaveAttribute( attr ) );
+
+			}
+
+			morphTargets[ key ] = attrMap.get( attr );
+
+		}
+
+	}
+
+}
+
+/**
+ * @param {BufferGeometry} geometry
+ * @return {number}
+ */
+function estimateBytesUsed( geometry ) {
+
+	// Return the estimated memory used by this geometry in bytes
+	// Calculate using itemSize, count, and BYTES_PER_ELEMENT to account
+	// for InterleavedBufferAttributes.
+	let mem = 0;
+	for ( const name in geometry.attributes ) {
+
+		const attr = geometry.getAttribute( name );
+		mem += attr.count * attr.itemSize * attr.array.BYTES_PER_ELEMENT;
+
+	}
+
+	const indices = geometry.getIndex();
+	mem += indices ? indices.count * indices.itemSize * indices.array.BYTES_PER_ELEMENT : 0;
+	return mem;
+
+}
+
+/**
+ * @param {BufferGeometry} geometry
+ * @param {number} tolerance
+ * @return {BufferGeometry}
+ */
+function mergeVertices( geometry, tolerance = 1e-4 ) {
+
+	tolerance = Math.max( tolerance, Number.EPSILON );
+
+	// Generate an index buffer if the geometry doesn't have one, or optimize it
+	// if it's already available.
+	const hashToIndex = {};
+	const indices = geometry.getIndex();
+	const positions = geometry.getAttribute( 'position' );
+	const vertexCount = indices ? indices.count : positions.count;
+
+	// next value for triangle indices
+	let nextIndex = 0;
+
+	// attributes and new attribute arrays
+	const attributeNames = Object.keys( geometry.attributes );
+	const tmpAttributes = {};
+	const tmpMorphAttributes = {};
+	const newIndices = [];
+	const getters = [ 'getX', 'getY', 'getZ', 'getW' ];
+	const setters = [ 'setX', 'setY', 'setZ', 'setW' ];
+
+	// Initialize the arrays, allocating space conservatively. Extra
+	// space will be trimmed in the last step.
+	for ( let i = 0, l = attributeNames.length; i < l; i ++ ) {
+
+		const name = attributeNames[ i ];
+		const attr = geometry.attributes[ name ];
+
+		tmpAttributes[ name ] = new attr.constructor(
+			new attr.array.constructor( attr.count * attr.itemSize ),
+			attr.itemSize,
+			attr.normalized
+		);
+
+		const morphAttributes = geometry.morphAttributes[ name ];
+		if ( morphAttributes ) {
+
+			if ( ! tmpMorphAttributes[ name ] ) tmpMorphAttributes[ name ] = [];
+			morphAttributes.forEach( ( morphAttr, i ) => {
+
+				const array = new morphAttr.array.constructor( morphAttr.count * morphAttr.itemSize );
+				tmpMorphAttributes[ name ][ i ] = new morphAttr.constructor( array, morphAttr.itemSize, morphAttr.normalized );
+
+			} );
+
+		}
+
+	}
+
+	// convert the error tolerance to an amount of decimal places to truncate to
+	const halfTolerance = tolerance * 0.5;
+	const exponent = Math.log10( 1 / tolerance );
+	const hashMultiplier = Math.pow( 10, exponent );
+	const hashAdditive = halfTolerance * hashMultiplier;
+	for ( let i = 0; i < vertexCount; i ++ ) {
+
+		const index = indices ? indices.getX( i ) : i;
+
+		// Generate a hash for the vertex attributes at the current index 'i'
+		let hash = '';
+		for ( let j = 0, l = attributeNames.length; j < l; j ++ ) {
+
+			const name = attributeNames[ j ];
+			const attribute = geometry.getAttribute( name );
+			const itemSize = attribute.itemSize;
+
+			for ( let k = 0; k < itemSize; k ++ ) {
+
+				// double tilde truncates the decimal value
+				hash += `${ ~ ~ ( attribute[ getters[ k ] ]( index ) * hashMultiplier + hashAdditive ) },`;
+
+			}
+
+		}
+
+		// Add another reference to the vertex if it's already
+		// used by another index
+		if ( hash in hashToIndex ) {
+
+			newIndices.push( hashToIndex[ hash ] );
+
+		} else {
+
+			// copy data to the new index in the temporary attributes
+			for ( let j = 0, l = attributeNames.length; j < l; j ++ ) {
+
+				const name = attributeNames[ j ];
+				const attribute = geometry.getAttribute( name );
+				const morphAttributes = geometry.morphAttributes[ name ];
+				const itemSize = attribute.itemSize;
+				const newArray = tmpAttributes[ name ];
+				const newMorphArrays = tmpMorphAttributes[ name ];
+
+				for ( let k = 0; k < itemSize; k ++ ) {
+
+					const getterFunc = getters[ k ];
+					const setterFunc = setters[ k ];
+					newArray[ setterFunc ]( nextIndex, attribute[ getterFunc ]( index ) );
+
+					if ( morphAttributes ) {
+
+						for ( let m = 0, ml = morphAttributes.length; m < ml; m ++ ) {
+
+							newMorphArrays[ m ][ setterFunc ]( nextIndex, morphAttributes[ m ][ getterFunc ]( index ) );
+
+						}
+
+					}
+
+				}
+
+			}
+
+			hashToIndex[ hash ] = nextIndex;
+			newIndices.push( nextIndex );
+			nextIndex ++;
+
+		}
+
+	}
+
+	// generate result BufferGeometry
+	const result = geometry.clone();
+	for ( const name in geometry.attributes ) {
+
+		const tmpAttribute = tmpAttributes[ name ];
+
+		result.setAttribute( name, new tmpAttribute.constructor(
+			tmpAttribute.array.slice( 0, nextIndex * tmpAttribute.itemSize ),
+			tmpAttribute.itemSize,
+			tmpAttribute.normalized,
+		) );
+
+		if ( ! ( name in tmpMorphAttributes ) ) continue;
+
+		for ( let j = 0; j < tmpMorphAttributes[ name ].length; j ++ ) {
+
+			const tmpMorphAttribute = tmpMorphAttributes[ name ][ j ];
+
+			result.morphAttributes[ name ][ j ] = new tmpMorphAttribute.constructor(
+				tmpMorphAttribute.array.slice( 0, nextIndex * tmpMorphAttribute.itemSize ),
+				tmpMorphAttribute.itemSize,
+				tmpMorphAttribute.normalized,
+			);
+
+		}
+
+	}
+
+	// indices
+
+	result.setIndex( newIndices );
+
+	return result;
+
+}
+
+/**
+ * @param {BufferGeometry} geometry
+ * @param {number} drawMode
+ * @return {BufferGeometry}
+ */
+function toTrianglesDrawMode( geometry, drawMode ) {
+
+	if ( drawMode === three__WEBPACK_IMPORTED_MODULE_0__.TrianglesDrawMode ) {
+
+		console.warn( 'THREE.BufferGeometryUtils.toTrianglesDrawMode(): Geometry already defined as triangles.' );
+		return geometry;
+
+	}
+
+	if ( drawMode === three__WEBPACK_IMPORTED_MODULE_0__.TriangleFanDrawMode || drawMode === three__WEBPACK_IMPORTED_MODULE_0__.TriangleStripDrawMode ) {
+
+		let index = geometry.getIndex();
+
+		// generate index if not present
+
+		if ( index === null ) {
+
+			const indices = [];
+
+			const position = geometry.getAttribute( 'position' );
+
+			if ( position !== undefined ) {
+
+				for ( let i = 0; i < position.count; i ++ ) {
+
+					indices.push( i );
+
+				}
+
+				geometry.setIndex( indices );
+				index = geometry.getIndex();
+
+			} else {
+
+				console.error( 'THREE.BufferGeometryUtils.toTrianglesDrawMode(): Undefined position attribute. Processing not possible.' );
+				return geometry;
+
+			}
+
+		}
+
+		//
+
+		const numberOfTriangles = index.count - 2;
+		const newIndices = [];
+
+		if ( drawMode === three__WEBPACK_IMPORTED_MODULE_0__.TriangleFanDrawMode ) {
+
+			// gl.TRIANGLE_FAN
+
+			for ( let i = 1; i <= numberOfTriangles; i ++ ) {
+
+				newIndices.push( index.getX( 0 ) );
+				newIndices.push( index.getX( i ) );
+				newIndices.push( index.getX( i + 1 ) );
+
+			}
+
+		} else {
+
+			// gl.TRIANGLE_STRIP
+
+			for ( let i = 0; i < numberOfTriangles; i ++ ) {
+
+				if ( i % 2 === 0 ) {
+
+					newIndices.push( index.getX( i ) );
+					newIndices.push( index.getX( i + 1 ) );
+					newIndices.push( index.getX( i + 2 ) );
+
+				} else {
+
+					newIndices.push( index.getX( i + 2 ) );
+					newIndices.push( index.getX( i + 1 ) );
+					newIndices.push( index.getX( i ) );
+
+				}
+
+			}
+
+		}
+
+		if ( ( newIndices.length / 3 ) !== numberOfTriangles ) {
+
+			console.error( 'THREE.BufferGeometryUtils.toTrianglesDrawMode(): Unable to generate correct amount of triangles.' );
+
+		}
+
+		// build final geometry
+
+		const newGeometry = geometry.clone();
+		newGeometry.setIndex( newIndices );
+		newGeometry.clearGroups();
+
+		return newGeometry;
+
+	} else {
+
+		console.error( 'THREE.BufferGeometryUtils.toTrianglesDrawMode(): Unknown draw mode:', drawMode );
+		return geometry;
+
+	}
+
+}
+
+/**
+ * Calculates the morphed attributes of a morphed/skinned BufferGeometry.
+ * Helpful for Raytracing or Decals.
+ * @param {Mesh | Line | Points} object An instance of Mesh, Line or Points.
+ * @return {Object} An Object with original position/normal attributes and morphed ones.
+ */
+function computeMorphedAttributes( object ) {
+
+	const _vA = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const _vB = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const _vC = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+
+	const _tempA = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const _tempB = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const _tempC = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+
+	const _morphA = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const _morphB = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const _morphC = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+
+	function _calculateMorphedAttributeData(
+		object,
+		attribute,
+		morphAttribute,
+		morphTargetsRelative,
+		a,
+		b,
+		c,
+		modifiedAttributeArray
+	) {
+
+		_vA.fromBufferAttribute( attribute, a );
+		_vB.fromBufferAttribute( attribute, b );
+		_vC.fromBufferAttribute( attribute, c );
+
+		const morphInfluences = object.morphTargetInfluences;
+
+		if ( morphAttribute && morphInfluences ) {
+
+			_morphA.set( 0, 0, 0 );
+			_morphB.set( 0, 0, 0 );
+			_morphC.set( 0, 0, 0 );
+
+			for ( let i = 0, il = morphAttribute.length; i < il; i ++ ) {
+
+				const influence = morphInfluences[ i ];
+				const morph = morphAttribute[ i ];
+
+				if ( influence === 0 ) continue;
+
+				_tempA.fromBufferAttribute( morph, a );
+				_tempB.fromBufferAttribute( morph, b );
+				_tempC.fromBufferAttribute( morph, c );
+
+				if ( morphTargetsRelative ) {
+
+					_morphA.addScaledVector( _tempA, influence );
+					_morphB.addScaledVector( _tempB, influence );
+					_morphC.addScaledVector( _tempC, influence );
+
+				} else {
+
+					_morphA.addScaledVector( _tempA.sub( _vA ), influence );
+					_morphB.addScaledVector( _tempB.sub( _vB ), influence );
+					_morphC.addScaledVector( _tempC.sub( _vC ), influence );
+
+				}
+
+			}
+
+			_vA.add( _morphA );
+			_vB.add( _morphB );
+			_vC.add( _morphC );
+
+		}
+
+		if ( object.isSkinnedMesh ) {
+
+			object.applyBoneTransform( a, _vA );
+			object.applyBoneTransform( b, _vB );
+			object.applyBoneTransform( c, _vC );
+
+		}
+
+		modifiedAttributeArray[ a * 3 + 0 ] = _vA.x;
+		modifiedAttributeArray[ a * 3 + 1 ] = _vA.y;
+		modifiedAttributeArray[ a * 3 + 2 ] = _vA.z;
+		modifiedAttributeArray[ b * 3 + 0 ] = _vB.x;
+		modifiedAttributeArray[ b * 3 + 1 ] = _vB.y;
+		modifiedAttributeArray[ b * 3 + 2 ] = _vB.z;
+		modifiedAttributeArray[ c * 3 + 0 ] = _vC.x;
+		modifiedAttributeArray[ c * 3 + 1 ] = _vC.y;
+		modifiedAttributeArray[ c * 3 + 2 ] = _vC.z;
+
+	}
+
+	const geometry = object.geometry;
+	const material = object.material;
+
+	let a, b, c;
+	const index = geometry.index;
+	const positionAttribute = geometry.attributes.position;
+	const morphPosition = geometry.morphAttributes.position;
+	const morphTargetsRelative = geometry.morphTargetsRelative;
+	const normalAttribute = geometry.attributes.normal;
+	const morphNormal = geometry.morphAttributes.position;
+
+	const groups = geometry.groups;
+	const drawRange = geometry.drawRange;
+	let i, j, il, jl;
+	let group;
+	let start, end;
+
+	const modifiedPosition = new Float32Array( positionAttribute.count * positionAttribute.itemSize );
+	const modifiedNormal = new Float32Array( normalAttribute.count * normalAttribute.itemSize );
+
+	if ( index !== null ) {
+
+		// indexed buffer geometry
+
+		if ( Array.isArray( material ) ) {
+
+			for ( i = 0, il = groups.length; i < il; i ++ ) {
+
+				group = groups[ i ];
+
+				start = Math.max( group.start, drawRange.start );
+				end = Math.min( ( group.start + group.count ), ( drawRange.start + drawRange.count ) );
+
+				for ( j = start, jl = end; j < jl; j += 3 ) {
+
+					a = index.getX( j );
+					b = index.getX( j + 1 );
+					c = index.getX( j + 2 );
+
+					_calculateMorphedAttributeData(
+						object,
+						positionAttribute,
+						morphPosition,
+						morphTargetsRelative,
+						a, b, c,
+						modifiedPosition
+					);
+
+					_calculateMorphedAttributeData(
+						object,
+						normalAttribute,
+						morphNormal,
+						morphTargetsRelative,
+						a, b, c,
+						modifiedNormal
+					);
+
+				}
+
+			}
+
+		} else {
+
+			start = Math.max( 0, drawRange.start );
+			end = Math.min( index.count, ( drawRange.start + drawRange.count ) );
+
+			for ( i = start, il = end; i < il; i += 3 ) {
+
+				a = index.getX( i );
+				b = index.getX( i + 1 );
+				c = index.getX( i + 2 );
+
+				_calculateMorphedAttributeData(
+					object,
+					positionAttribute,
+					morphPosition,
+					morphTargetsRelative,
+					a, b, c,
+					modifiedPosition
+				);
+
+				_calculateMorphedAttributeData(
+					object,
+					normalAttribute,
+					morphNormal,
+					morphTargetsRelative,
+					a, b, c,
+					modifiedNormal
+				);
+
+			}
+
+		}
+
+	} else {
+
+		// non-indexed buffer geometry
+
+		if ( Array.isArray( material ) ) {
+
+			for ( i = 0, il = groups.length; i < il; i ++ ) {
+
+				group = groups[ i ];
+
+				start = Math.max( group.start, drawRange.start );
+				end = Math.min( ( group.start + group.count ), ( drawRange.start + drawRange.count ) );
+
+				for ( j = start, jl = end; j < jl; j += 3 ) {
+
+					a = j;
+					b = j + 1;
+					c = j + 2;
+
+					_calculateMorphedAttributeData(
+						object,
+						positionAttribute,
+						morphPosition,
+						morphTargetsRelative,
+						a, b, c,
+						modifiedPosition
+					);
+
+					_calculateMorphedAttributeData(
+						object,
+						normalAttribute,
+						morphNormal,
+						morphTargetsRelative,
+						a, b, c,
+						modifiedNormal
+					);
+
+				}
+
+			}
+
+		} else {
+
+			start = Math.max( 0, drawRange.start );
+			end = Math.min( positionAttribute.count, ( drawRange.start + drawRange.count ) );
+
+			for ( i = start, il = end; i < il; i += 3 ) {
+
+				a = i;
+				b = i + 1;
+				c = i + 2;
+
+				_calculateMorphedAttributeData(
+					object,
+					positionAttribute,
+					morphPosition,
+					morphTargetsRelative,
+					a, b, c,
+					modifiedPosition
+				);
+
+				_calculateMorphedAttributeData(
+					object,
+					normalAttribute,
+					morphNormal,
+					morphTargetsRelative,
+					a, b, c,
+					modifiedNormal
+				);
+
+			}
+
+		}
+
+	}
+
+	const morphedPositionAttribute = new three__WEBPACK_IMPORTED_MODULE_0__.Float32BufferAttribute( modifiedPosition, 3 );
+	const morphedNormalAttribute = new three__WEBPACK_IMPORTED_MODULE_0__.Float32BufferAttribute( modifiedNormal, 3 );
+
+	return {
+
+		positionAttribute: positionAttribute,
+		normalAttribute: normalAttribute,
+		morphedPositionAttribute: morphedPositionAttribute,
+		morphedNormalAttribute: morphedNormalAttribute
+
+	};
+
+}
+
+function mergeGroups( geometry ) {
+
+	if ( geometry.groups.length === 0 ) {
+
+		console.warn( 'THREE.BufferGeometryUtils.mergeGroups(): No groups are defined. Nothing to merge.' );
+		return geometry;
+
+	}
+
+	let groups = geometry.groups;
+
+	// sort groups by material index
+
+	groups = groups.sort( ( a, b ) => {
+
+		if ( a.materialIndex !== b.materialIndex ) return a.materialIndex - b.materialIndex;
+
+		return a.start - b.start;
+
+	} );
+
+	// create index for non-indexed geometries
+
+	if ( geometry.getIndex() === null ) {
+
+		const positionAttribute = geometry.getAttribute( 'position' );
+		const indices = [];
+
+		for ( let i = 0; i < positionAttribute.count; i += 3 ) {
+
+			indices.push( i, i + 1, i + 2 );
+
+		}
+
+		geometry.setIndex( indices );
+
+	}
+
+	// sort index
+
+	const index = geometry.getIndex();
+
+	const newIndices = [];
+
+	for ( let i = 0; i < groups.length; i ++ ) {
+
+		const group = groups[ i ];
+
+		const groupStart = group.start;
+		const groupLength = groupStart + group.count;
+
+		for ( let j = groupStart; j < groupLength; j ++ ) {
+
+			newIndices.push( index.getX( j ) );
+
+		}
+
+	}
+
+	geometry.dispose(); // Required to force buffer recreation
+	geometry.setIndex( newIndices );
+
+	// update groups indices
+
+	let start = 0;
+
+	for ( let i = 0; i < groups.length; i ++ ) {
+
+		const group = groups[ i ];
+
+		group.start = start;
+		start += group.count;
+
+	}
+
+	// merge groups
+
+	let currentGroup = groups[ 0 ];
+
+	geometry.groups = [ currentGroup ];
+
+	for ( let i = 1; i < groups.length; i ++ ) {
+
+		const group = groups[ i ];
+
+		if ( currentGroup.materialIndex === group.materialIndex ) {
+
+			currentGroup.count += group.count;
+
+		} else {
+
+			currentGroup = group;
+			geometry.groups.push( currentGroup );
+
+		}
+
+	}
+
+	return geometry;
+
+}
+
+
+/**
+ * Modifies the supplied geometry if it is non-indexed, otherwise creates a new,
+ * non-indexed geometry. Returns the geometry with smooth normals everywhere except
+ * faces that meet at an angle greater than the crease angle.
+ *
+ * @param {BufferGeometry} geometry
+ * @param {number} [creaseAngle]
+ * @return {BufferGeometry}
+ */
+function toCreasedNormals( geometry, creaseAngle = Math.PI / 3 /* 60 degrees */ ) {
+
+	const creaseDot = Math.cos( creaseAngle );
+	const hashMultiplier = ( 1 + 1e-10 ) * 1e2;
+
+	// reusable vectors
+	const verts = [ new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(), new three__WEBPACK_IMPORTED_MODULE_0__.Vector3(), new three__WEBPACK_IMPORTED_MODULE_0__.Vector3() ];
+	const tempVec1 = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const tempVec2 = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const tempNorm = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+	const tempNorm2 = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3();
+
+	// hashes a vector
+	function hashVertex( v ) {
+
+		const x = ~ ~ ( v.x * hashMultiplier );
+		const y = ~ ~ ( v.y * hashMultiplier );
+		const z = ~ ~ ( v.z * hashMultiplier );
+		return `${x},${y},${z}`;
+
+	}
+
+	// BufferGeometry.toNonIndexed() warns if the geometry is non-indexed
+	// and returns the original geometry
+	const resultGeometry = geometry.index ? geometry.toNonIndexed() : geometry;
+	const posAttr = resultGeometry.attributes.position;
+	const vertexMap = {};
+
+	// find all the normals shared by commonly located vertices
+	for ( let i = 0, l = posAttr.count / 3; i < l; i ++ ) {
+
+		const i3 = 3 * i;
+		const a = verts[ 0 ].fromBufferAttribute( posAttr, i3 + 0 );
+		const b = verts[ 1 ].fromBufferAttribute( posAttr, i3 + 1 );
+		const c = verts[ 2 ].fromBufferAttribute( posAttr, i3 + 2 );
+
+		tempVec1.subVectors( c, b );
+		tempVec2.subVectors( a, b );
+
+		// add the normal to the map for all vertices
+		const normal = new three__WEBPACK_IMPORTED_MODULE_0__.Vector3().crossVectors( tempVec1, tempVec2 ).normalize();
+		for ( let n = 0; n < 3; n ++ ) {
+
+			const vert = verts[ n ];
+			const hash = hashVertex( vert );
+			if ( ! ( hash in vertexMap ) ) {
+
+				vertexMap[ hash ] = [];
+
+			}
+
+			vertexMap[ hash ].push( normal );
+
+		}
+
+	}
+
+	// average normals from all vertices that share a common location if they are within the
+	// provided crease threshold
+	const normalArray = new Float32Array( posAttr.count * 3 );
+	const normAttr = new three__WEBPACK_IMPORTED_MODULE_0__.BufferAttribute( normalArray, 3, false );
+	for ( let i = 0, l = posAttr.count / 3; i < l; i ++ ) {
+
+		// get the face normal for this vertex
+		const i3 = 3 * i;
+		const a = verts[ 0 ].fromBufferAttribute( posAttr, i3 + 0 );
+		const b = verts[ 1 ].fromBufferAttribute( posAttr, i3 + 1 );
+		const c = verts[ 2 ].fromBufferAttribute( posAttr, i3 + 2 );
+
+		tempVec1.subVectors( c, b );
+		tempVec2.subVectors( a, b );
+
+		tempNorm.crossVectors( tempVec1, tempVec2 ).normalize();
+
+		// average all normals that meet the threshold and set the normal value
+		for ( let n = 0; n < 3; n ++ ) {
+
+			const vert = verts[ n ];
+			const hash = hashVertex( vert );
+			const otherNormals = vertexMap[ hash ];
+			tempNorm2.set( 0, 0, 0 );
+
+			for ( let k = 0, lk = otherNormals.length; k < lk; k ++ ) {
+
+				const otherNorm = otherNormals[ k ];
+				if ( tempNorm.dot( otherNorm ) > creaseDot ) {
+
+					tempNorm2.add( otherNorm );
+
+				}
+
+			}
+
+			tempNorm2.normalize();
+			normAttr.setXYZ( i3 + n, tempNorm2.x, tempNorm2.y, tempNorm2.z );
+
+		}
+
+	}
+
+	resultGeometry.setAttribute( 'normal', normAttr );
+	return resultGeometry;
+
+}
+
+
+
+
+/***/ }),
+
 /***/ "./src/engine/core/core.js":
 /*!*********************************!*\
   !*** ./src/engine/core/core.js ***!
@@ -90363,24 +92003,28 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _core_taskrunner_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../core/taskrunner.js */ "./src/engine/core/taskrunner.js");
 /* harmony import */ var _io_fileutils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../io/fileutils.js */ "./src/engine/io/fileutils.js");
 /* harmony import */ var _model_color_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../model/color.js */ "./src/engine/model/color.js");
-/* harmony import */ var _importerfiles_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./importerfiles.js */ "./src/engine/import/importerfiles.js");
-/* harmony import */ var _importer3dm_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./importer3dm.js */ "./src/engine/import/importer3dm.js");
-/* harmony import */ var _importer3ds_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./importer3ds.js */ "./src/engine/import/importer3ds.js");
-/* harmony import */ var _importergltf_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./importergltf.js */ "./src/engine/import/importergltf.js");
-/* harmony import */ var _importerifc_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./importerifc.js */ "./src/engine/import/importerifc.js");
-/* harmony import */ var _importerobj_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./importerobj.js */ "./src/engine/import/importerobj.js");
-/* harmony import */ var _importeroff_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./importeroff.js */ "./src/engine/import/importeroff.js");
-/* harmony import */ var _importerply_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./importerply.js */ "./src/engine/import/importerply.js");
-/* harmony import */ var _importerocct_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./importerocct.js */ "./src/engine/import/importerocct.js");
-/* harmony import */ var _importerstl_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./importerstl.js */ "./src/engine/import/importerstl.js");
-/* harmony import */ var _importerbim_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./importerbim.js */ "./src/engine/import/importerbim.js");
-/* harmony import */ var _importerthree_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./importerthree.js */ "./src/engine/import/importerthree.js");
-/* harmony import */ var _importerfcstd_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./importerfcstd.js */ "./src/engine/import/importerfcstd.js");
-/* harmony import */ var fflate__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! fflate */ "./node_modules/fflate/esm/browser.js");
+/* harmony import */ var _model_model_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../model/model.js */ "./src/engine/model/model.js");
+/* harmony import */ var _importerfiles_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./importerfiles.js */ "./src/engine/import/importerfiles.js");
+/* harmony import */ var _importer3dm_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./importer3dm.js */ "./src/engine/import/importer3dm.js");
+/* harmony import */ var _importer3ds_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./importer3ds.js */ "./src/engine/import/importer3ds.js");
+/* harmony import */ var _importergltf_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./importergltf.js */ "./src/engine/import/importergltf.js");
+/* harmony import */ var _importerifc_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./importerifc.js */ "./src/engine/import/importerifc.js");
+/* harmony import */ var _importerobj_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./importerobj.js */ "./src/engine/import/importerobj.js");
+/* harmony import */ var _importeroff_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./importeroff.js */ "./src/engine/import/importeroff.js");
+/* harmony import */ var _importerply_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./importerply.js */ "./src/engine/import/importerply.js");
+/* harmony import */ var _importerocct_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./importerocct.js */ "./src/engine/import/importerocct.js");
+/* harmony import */ var _importerstl_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./importerstl.js */ "./src/engine/import/importerstl.js");
+/* harmony import */ var _importerbim_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./importerbim.js */ "./src/engine/import/importerbim.js");
+/* harmony import */ var _importerthree_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./importerthree.js */ "./src/engine/import/importerthree.js");
+/* harmony import */ var _importerfcstd_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ./importerfcstd.js */ "./src/engine/import/importerfcstd.js");
+/* harmony import */ var fflate__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! fflate */ "./node_modules/fflate/esm/browser.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return e; }; var t, e = {}, r = Object.prototype, n = r.hasOwnProperty, o = Object.defineProperty || function (t, e, r) { t[e] = r.value; }, i = "function" == typeof Symbol ? Symbol : {}, a = i.iterator || "@@iterator", c = i.asyncIterator || "@@asyncIterator", u = i.toStringTag || "@@toStringTag"; function define(t, e, r) { return Object.defineProperty(t, e, { value: r, enumerable: !0, configurable: !0, writable: !0 }), t[e]; } try { define({}, ""); } catch (t) { define = function define(t, e, r) { return t[e] = r; }; } function wrap(t, e, r, n) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype), c = new Context(n || []); return o(a, "_invoke", { value: makeInvokeMethod(t, r, c) }), a; } function tryCatch(t, e, r) { try { return { type: "normal", arg: t.call(e, r) }; } catch (t) { return { type: "throw", arg: t }; } } e.wrap = wrap; var h = "suspendedStart", l = "suspendedYield", f = "executing", s = "completed", y = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var p = {}; define(p, a, function () { return this; }); var d = Object.getPrototypeOf, v = d && d(d(values([]))); v && v !== r && n.call(v, a) && (p = v); var g = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(p); function defineIteratorMethods(t) { ["next", "throw", "return"].forEach(function (e) { define(t, e, function (t) { return this._invoke(e, t); }); }); } function AsyncIterator(t, e) { function invoke(r, o, i, a) { var c = tryCatch(t[r], t, o); if ("throw" !== c.type) { var u = c.arg, h = u.value; return h && "object" == _typeof(h) && n.call(h, "__await") ? e.resolve(h.__await).then(function (t) { invoke("next", t, i, a); }, function (t) { invoke("throw", t, i, a); }) : e.resolve(h).then(function (t) { u.value = t, i(u); }, function (t) { return invoke("throw", t, i, a); }); } a(c.arg); } var r; o(this, "_invoke", { value: function value(t, n) { function callInvokeWithMethodAndArg() { return new e(function (e, r) { invoke(t, n, e, r); }); } return r = r ? r.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(e, r, n) { var o = h; return function (i, a) { if (o === f) throw Error("Generator is already running"); if (o === s) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var c = n.delegate; if (c) { var u = maybeInvokeDelegate(c, n); if (u) { if (u === y) continue; return u; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (o === h) throw o = s, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = f; var p = tryCatch(e, r, n); if ("normal" === p.type) { if (o = n.done ? s : l, p.arg === y) continue; return { value: p.arg, done: n.done }; } "throw" === p.type && (o = s, n.method = "throw", n.arg = p.arg); } }; } function maybeInvokeDelegate(e, r) { var n = r.method, o = e.iterator[n]; if (o === t) return r.delegate = null, "throw" === n && e.iterator["return"] && (r.method = "return", r.arg = t, maybeInvokeDelegate(e, r), "throw" === r.method) || "return" !== n && (r.method = "throw", r.arg = new TypeError("The iterator does not provide a '" + n + "' method")), y; var i = tryCatch(o, e.iterator, r.arg); if ("throw" === i.type) return r.method = "throw", r.arg = i.arg, r.delegate = null, y; var a = i.arg; return a ? a.done ? (r[e.resultName] = a.value, r.next = e.nextLoc, "return" !== r.method && (r.method = "next", r.arg = t), r.delegate = null, y) : a : (r.method = "throw", r.arg = new TypeError("iterator result is not an object"), r.delegate = null, y); } function pushTryEntry(t) { var e = { tryLoc: t[0] }; 1 in t && (e.catchLoc = t[1]), 2 in t && (e.finallyLoc = t[2], e.afterLoc = t[3]), this.tryEntries.push(e); } function resetTryEntry(t) { var e = t.completion || {}; e.type = "normal", delete e.arg, t.completion = e; } function Context(t) { this.tryEntries = [{ tryLoc: "root" }], t.forEach(pushTryEntry, this), this.reset(!0); } function values(e) { if (e || "" === e) { var r = e[a]; if (r) return r.call(e); if ("function" == typeof e.next) return e; if (!isNaN(e.length)) { var o = -1, i = function next() { for (; ++o < e.length;) if (n.call(e, o)) return next.value = e[o], next.done = !1, next; return next.value = t, next.done = !0, next; }; return i.next = i; } } throw new TypeError(_typeof(e) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, o(g, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), o(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, u, "GeneratorFunction"), e.isGeneratorFunction = function (t) { var e = "function" == typeof t && t.constructor; return !!e && (e === GeneratorFunction || "GeneratorFunction" === (e.displayName || e.name)); }, e.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, define(t, u, "GeneratorFunction")), t.prototype = Object.create(g), t; }, e.awrap = function (t) { return { __await: t }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, c, function () { return this; }), e.AsyncIterator = AsyncIterator, e.async = function (t, r, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(wrap(t, r, n, o), i); return e.isGeneratorFunction(r) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, defineIteratorMethods(g), define(g, u, "Generator"), define(g, a, function () { return this; }), define(g, "toString", function () { return "[object Generator]"; }), e.keys = function (t) { var e = Object(t), r = []; for (var n in e) r.push(n); return r.reverse(), function next() { for (; r.length;) { var t = r.pop(); if (t in e) return next.value = t, next.done = !1, next; } return next.done = !0, next; }; }, e.values = values, Context.prototype = { constructor: Context, reset: function reset(e) { if (this.prev = 0, this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(resetTryEntry), !e) for (var r in this) "t" === r.charAt(0) && n.call(this, r) && !isNaN(+r.slice(1)) && (this[r] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0].completion; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(e) { if (this.done) throw e; var r = this; function handle(n, o) { return a.type = "throw", a.arg = e, r.next = n, o && (r.method = "next", r.arg = t), !!o; } for (var o = this.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i.completion; if ("root" === i.tryLoc) return handle("end"); if (i.tryLoc <= this.prev) { var c = n.call(i, "catchLoc"), u = n.call(i, "finallyLoc"); if (c && u) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } else if (c) { if (this.prev < i.catchLoc) return handle(i.catchLoc, !0); } else { if (!u) throw Error("try statement without catch or finally"); if (this.prev < i.finallyLoc) return handle(i.finallyLoc); } } } }, abrupt: function abrupt(t, e) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var o = this.tryEntries[r]; if (o.tryLoc <= this.prev && n.call(o, "finallyLoc") && this.prev < o.finallyLoc) { var i = o; break; } } i && ("break" === t || "continue" === t) && i.tryLoc <= e && e <= i.finallyLoc && (i = null); var a = i ? i.completion : {}; return a.type = t, a.arg = e, i ? (this.method = "next", this.next = i.finallyLoc, y) : this.complete(a); }, complete: function complete(t, e) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && e && (this.next = e), y; }, finish: function finish(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.finallyLoc === t) return this.complete(r.completion, r.afterLoc), resetTryEntry(r), y; } }, "catch": function _catch(t) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var r = this.tryEntries[e]; if (r.tryLoc === t) { var n = r.completion; if ("throw" === n.type) { var o = n.arg; resetTryEntry(r); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(e, r, n) { return this.delegate = { iterator: values(e), resultName: r, nextLoc: n }, "next" === this.method && (this.arg = t), y; } }, e; }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
@@ -90388,6 +92032,8 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 
 
+
+ // Adjust path if needed
 
 
 
@@ -90450,8 +92096,8 @@ var ImporterFileAccessor = /*#__PURE__*/function () {
 var Importer = /*#__PURE__*/function () {
   function Importer() {
     _classCallCheck(this, Importer);
-    this.importers = [new _importerobj_js__WEBPACK_IMPORTED_MODULE_8__.ImporterObj(), new _importerstl_js__WEBPACK_IMPORTED_MODULE_12__.ImporterStl(), new _importeroff_js__WEBPACK_IMPORTED_MODULE_9__.ImporterOff(), new _importerply_js__WEBPACK_IMPORTED_MODULE_10__.ImporterPly(), new _importer3ds_js__WEBPACK_IMPORTED_MODULE_5__.Importer3ds(), new _importergltf_js__WEBPACK_IMPORTED_MODULE_6__.ImporterGltf(), new _importerbim_js__WEBPACK_IMPORTED_MODULE_13__.ImporterBim(), new _importer3dm_js__WEBPACK_IMPORTED_MODULE_4__.Importer3dm(), new _importerifc_js__WEBPACK_IMPORTED_MODULE_7__.ImporterIfc(), new _importerocct_js__WEBPACK_IMPORTED_MODULE_11__.ImporterOcct(), new _importerfcstd_js__WEBPACK_IMPORTED_MODULE_15__.ImporterFcstd(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_14__.ImporterThreeFbx(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_14__.ImporterThreeDae(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_14__.ImporterThreeWrl(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_14__.ImporterThree3mf(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_14__.ImporterThreeAmf()];
-    this.fileList = new _importerfiles_js__WEBPACK_IMPORTED_MODULE_3__.ImporterFileList();
+    this.importers = [new _importerobj_js__WEBPACK_IMPORTED_MODULE_9__.ImporterObj(), new _importerstl_js__WEBPACK_IMPORTED_MODULE_13__.ImporterStl(), new _importeroff_js__WEBPACK_IMPORTED_MODULE_10__.ImporterOff(), new _importerply_js__WEBPACK_IMPORTED_MODULE_11__.ImporterPly(), new _importer3ds_js__WEBPACK_IMPORTED_MODULE_6__.Importer3ds(), new _importergltf_js__WEBPACK_IMPORTED_MODULE_7__.ImporterGltf(), new _importerbim_js__WEBPACK_IMPORTED_MODULE_14__.ImporterBim(), new _importer3dm_js__WEBPACK_IMPORTED_MODULE_5__.Importer3dm(), new _importerifc_js__WEBPACK_IMPORTED_MODULE_8__.ImporterIfc(), new _importerocct_js__WEBPACK_IMPORTED_MODULE_12__.ImporterOcct(), new _importerfcstd_js__WEBPACK_IMPORTED_MODULE_16__.ImporterFcstd(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_15__.ImporterThreeFbx(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_15__.ImporterThreeDae(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_15__.ImporterThreeWrl(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_15__.ImporterThree3mf(), new _importerthree_js__WEBPACK_IMPORTED_MODULE_15__.ImporterThreeAmf()];
+    this.fileList = new _importerfiles_js__WEBPACK_IMPORTED_MODULE_4__.ImporterFileList();
     this.model = null;
     this.usedFiles = [];
     this.missingFiles = [];
@@ -90482,7 +92128,7 @@ var Importer = /*#__PURE__*/function () {
   }, {
     key: "LoadFiles",
     value: function LoadFiles(inputFiles, callbacks) {
-      var newFileList = new _importerfiles_js__WEBPACK_IMPORTED_MODULE_3__.ImporterFileList();
+      var newFileList = new _importerfiles_js__WEBPACK_IMPORTED_MODULE_4__.ImporterFileList();
       newFileList.FillFromInputFiles(inputFiles);
       var reset = false;
       if (this.HasImportableFile(newFileList)) {
@@ -90513,36 +92159,143 @@ var Importer = /*#__PURE__*/function () {
     }
   }, {
     key: "ImportLoadedFiles",
-    value: function ImportLoadedFiles(settings, callbacks) {
-      var _this2 = this;
-      var importableFiles = this.GetImportableFiles(this.fileList);
-      if (importableFiles.length === 0) {
-        callbacks.onImportError(new ImportError(ImportErrorCode.NoImportableFile));
-        return;
-      }
-      if (importableFiles.length === 1 || !callbacks.onSelectMainFile) {
-        var mainFile = importableFiles[0];
-        this.ImportLoadedMainFile(mainFile, settings, callbacks);
-      } else {
-        var fileNames = importableFiles.map(function (importableFile) {
-          return importableFile.file.name;
-        });
-        callbacks.onSelectMainFile(fileNames, function (mainFileIndex) {
-          if (mainFileIndex === null) {
-            callbacks.onImportError(new ImportError(ImportErrorCode.NoImportableFile));
-            return;
+    value: function () {
+      var _ImportLoadedFiles = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(settings, callbacks) {
+        var _this2 = this;
+        var importableFiles, mergedModel, usedFiles, missingFiles, _iterator, _step, _loop, result;
+        return _regeneratorRuntime().wrap(function _callee$(_context2) {
+          while (1) switch (_context2.prev = _context2.next) {
+            case 0:
+              importableFiles = this.GetImportableFiles(this.fileList);
+              if (!(importableFiles.length === 0)) {
+                _context2.next = 4;
+                break;
+              }
+              callbacks.onImportError(new ImportError(ImportErrorCode.NoImportableFile));
+              return _context2.abrupt("return");
+            case 4:
+              mergedModel = new _model_model_js__WEBPACK_IMPORTED_MODULE_3__.Model();
+              usedFiles = [];
+              missingFiles = [];
+              _iterator = _createForOfIteratorHelper(importableFiles);
+              _context2.prev = 8;
+              _loop = /*#__PURE__*/_regeneratorRuntime().mark(function _loop() {
+                var importableFile;
+                return _regeneratorRuntime().wrap(function _loop$(_context) {
+                  while (1) switch (_context.prev = _context.next) {
+                    case 0:
+                      importableFile = _step.value;
+                      _context.next = 3;
+                      return new Promise(function (resolve, reject) {
+                        var importer = importableFile.importer;
+                        var file = importableFile.file;
+                        var fileAccessor = new ImporterFileAccessor(function (fileName) {
+                          var subFile = _this2.fileList.FindFileByPath(fileName);
+                          if (!subFile || !subFile.content) {
+                            missingFiles.push(fileName);
+                            return null;
+                          }
+                          usedFiles.push(fileName);
+                          return subFile.content;
+                        });
+                        importer.Import(file.name, file.extension, file.content, {
+                          getDefaultLineMaterialColor: function getDefaultLineMaterialColor() {
+                            return settings.defaultLineColor;
+                          },
+                          getDefaultMaterialColor: function getDefaultMaterialColor() {
+                            return settings.defaultColor;
+                          },
+                          getFileBuffer: fileAccessor.GetFileBuffer.bind(fileAccessor),
+                          onSuccess: function onSuccess() {
+                            var model = importer.GetModel();
+                            if (model) {
+                              mergedModel.MergeModel(model);
+                            }
+                            resolve();
+                          },
+                          onError: function onError() {
+                            reject(new Error(importer.GetErrorMessage()));
+                          },
+                          onComplete: function onComplete() {
+                            importer.Clear();
+                          }
+                        });
+                      });
+                    case 3:
+                    case "end":
+                      return _context.stop();
+                  }
+                }, _loop);
+              });
+              _iterator.s();
+            case 11:
+              if ((_step = _iterator.n()).done) {
+                _context2.next = 15;
+                break;
+              }
+              return _context2.delegateYield(_loop(), "t0", 13);
+            case 13:
+              _context2.next = 11;
+              break;
+            case 15:
+              _context2.next = 20;
+              break;
+            case 17:
+              _context2.prev = 17;
+              _context2.t1 = _context2["catch"](8);
+              _iterator.e(_context2.t1);
+            case 20:
+              _context2.prev = 20;
+              _iterator.f();
+              return _context2.finish(20);
+            case 23:
+              result = new ImportResult();
+              result.model = mergedModel;
+              result.usedFiles = usedFiles;
+              result.missingFiles = missingFiles;
+              result.mainFile = importableFiles[0].file.name;
+              result.upVector = null;
+              callbacks.onImportSuccess(result);
+            case 30:
+            case "end":
+              return _context2.stop();
           }
-          (0,_core_taskrunner_js__WEBPACK_IMPORTED_MODULE_0__.RunTaskAsync)(function () {
-            var mainFile = importableFiles[mainFileIndex];
-            _this2.ImportLoadedMainFile(mainFile, settings, callbacks);
-          });
-        });
+        }, _callee, this, [[8, 17, 20, 23]]);
+      }));
+      function ImportLoadedFiles(_x, _x2) {
+        return _ImportLoadedFiles.apply(this, arguments);
       }
-    }
+      return ImportLoadedFiles;
+    }() // ImportLoadedFiles (settings, callbacks)
+    // {
+    //     let importableFiles = this.GetImportableFiles (this.fileList);
+    //     console.log ('Importable files:', importableFiles);
+    //     if (importableFiles.length === 0) {
+    //         callbacks.onImportError (new ImportError (ImportErrorCode.NoImportableFile));
+    //         return;
+    //     }
+    //     if (importableFiles.length === 1 || !callbacks.onSelectMainFile) {
+    //         let mainFile = importableFiles[0];
+    //         this.ImportLoadedMainFile (mainFile, settings, callbacks);
+    //     } else {
+    //         let fileNames = importableFiles.map (importableFile => importableFile.file.name);
+    //         callbacks.onSelectMainFile (fileNames, (mainFileIndex) => {
+    //             if (mainFileIndex === null) {
+    //                 callbacks.onImportError (new ImportError (ImportErrorCode.NoImportableFile));
+    //                 return;
+    //             }
+    //             RunTaskAsync (() => {
+    //                 let mainFile = importableFiles[mainFileIndex];
+    //                 this.ImportLoadedMainFile (mainFile, settings, callbacks);
+    //             });
+    //         });
+    //     }
+    // }
   }, {
     key: "ImportLoadedMainFile",
     value: function ImportLoadedMainFile(mainFile, settings, callbacks) {
       var _this3 = this;
+      console.log('Importing main file:', mainFile.file.name);
       if (mainFile === null || mainFile.file === null || mainFile.file.content === null) {
         var error = new ImportError(ImportErrorCode.FailedToLoadFile);
         if (mainFile !== null && mainFile.file !== null) {
@@ -90604,19 +92357,19 @@ var Importer = /*#__PURE__*/function () {
     value: function DecompressArchives(fileList, onReady) {
       var files = fileList.GetFiles();
       var archives = [];
-      var _iterator = _createForOfIteratorHelper(files),
-        _step;
+      var _iterator2 = _createForOfIteratorHelper(files),
+        _step2;
       try {
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          var _file = _step.value;
+        for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+          var _file = _step2.value;
           if (_file.extension === 'zip') {
             archives.push(_file);
           }
         }
       } catch (err) {
-        _iterator.e(err);
+        _iterator2.e(err);
       } finally {
-        _iterator.f();
+        _iterator2.f();
       }
       if (archives.length === 0) {
         onReady();
@@ -90625,10 +92378,10 @@ var Importer = /*#__PURE__*/function () {
       for (var i = 0; i < archives.length; i++) {
         var archiveFile = archives[i];
         var archiveBuffer = new Uint8Array(archiveFile.content);
-        var decompressed = fflate__WEBPACK_IMPORTED_MODULE_16__.unzipSync(archiveBuffer);
+        var decompressed = fflate__WEBPACK_IMPORTED_MODULE_17__.unzipSync(archiveBuffer);
         for (var fileName in decompressed) {
           if (Object.prototype.hasOwnProperty.call(decompressed, fileName)) {
-            var file = new _importerfiles_js__WEBPACK_IMPORTED_MODULE_3__.ImporterFile(fileName, _io_fileutils_js__WEBPACK_IMPORTED_MODULE_1__.FileSource.Decompressed, null);
+            var file = new _importerfiles_js__WEBPACK_IMPORTED_MODULE_4__.ImporterFile(fileName, _io_fileutils_js__WEBPACK_IMPORTED_MODULE_1__.FileSource.Decompressed, null);
             file.SetContent(decompressed[fileName].buffer);
             fileList.AddFile(file);
           }
@@ -90650,6 +92403,7 @@ var Importer = /*#__PURE__*/function () {
   }, {
     key: "GetImportableFiles",
     value: function GetImportableFiles(fileList) {
+      console.log('Getting importable files from file list:', fileList);
       function FindImporter(file, importers) {
         for (var importerIndex = 0; importerIndex < importers.length; importerIndex++) {
           var importer = importers[importerIndex];
@@ -99443,6 +101197,44 @@ var Model = /*#__PURE__*/function (_ModelObject3D) {
       }
       return center;
     }
+  }, {
+    key: "MergeModel",
+    value: function MergeModel(otherModel) {
+      var _this3 = this;
+      var meshIndexOffset = this.meshes.length;
+
+      // Merge materials
+      var materialIndexMap = new Map();
+      otherModel.materials.forEach(function (material, index) {
+        var newIndex = _this3.AddMaterial(material);
+        materialIndexMap.set(index, newIndex);
+      });
+
+      // Merge meshes
+      otherModel.meshes.forEach(function (mesh) {
+        // Update material index of the mesh
+        if (materialIndexMap.has(mesh.materialIndex)) {
+          mesh.materialIndex = materialIndexMap.get(mesh.materialIndex);
+        }
+        _this3.AddMesh(mesh);
+      });
+
+      // Merge nodes (just flatten all into root)
+      otherModel.root.Enumerate(function (node) {
+        var _iterator3 = _createForOfIteratorHelper(node.GetMeshIndices()),
+          _step3;
+        try {
+          for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+            var meshIndex = _step3.value;
+            _this3.root.AddMeshIndex(meshIndex + meshIndexOffset);
+          }
+        } catch (err) {
+          _iterator3.e(err);
+        } finally {
+          _iterator3.f();
+        }
+      });
+    }
   }]);
 }(_object_js__WEBPACK_IMPORTED_MODULE_2__.ModelObject3D);
 
@@ -102376,12 +104168,20 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _viewer_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./viewer.js */ "./src/engine/viewer/viewer.js");
 /* harmony import */ var _shadingmodel_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./shadingmodel.js */ "./src/engine/viewer/shadingmodel.js");
 /* harmony import */ var _core_localization_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ../core/localization.js */ "./src/engine/core/localization.js");
+/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
+/* harmony import */ var three_examples_jsm_utils_BufferGeometryUtils_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! three/examples/jsm/utils/BufferGeometryUtils.js */ "./node_modules/three/examples/jsm/utils/BufferGeometryUtils.js");
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+
+
+
 
 
 
@@ -102477,6 +104277,74 @@ var EmbeddedViewer = /*#__PURE__*/function () {
       var inputFiles = (0,_import_importerfiles_js__WEBPACK_IMPORTED_MODULE_2__.InputFilesFromFileObjects)(fileList);
       this.LoadModelFromInputFiles(inputFiles);
     }
+  }, {
+    key: "MergeSubMeshesByMaterial",
+    value: function MergeSubMeshesByMaterial(parentMesh) {
+      var materialMap = new Map();
+
+      // Traverse and collect meshes by material index
+      parentMesh.updateMatrixWorld(true);
+      parentMesh.traverse(function (child) {
+        if (child.isMesh && child.geometry && child.material) {
+          var mat = child.material;
+          //const key = mat.uuid;
+
+          var key;
+          if (Array.isArray(mat)) {
+            key = mat.map(function (m) {
+              return m.uuid;
+            }).join('-'); // create a key from all material UUIDs
+          } else {
+            key = mat.uuid;
+          }
+          console.log('material:', mat, 'key:', key);
+          if (!materialMap.has(key)) {
+            materialMap.set(key, {
+              material: mat,
+              geometries: []
+            });
+          }
+          var geom = child.geometry.clone();
+          //geom.toNonIndexed();
+
+          geom.applyMatrix4(child.matrixWorld);
+          materialMap.get(key).geometries.push(geom);
+        }
+      });
+
+      // Merge geometries per material and create merged meshes
+      var mergedMeshes = [];
+      var _iterator = _createForOfIteratorHelper(materialMap.values()),
+        _step;
+      try {
+        for (_iterator.s(); !(_step = _iterator.n()).done;) {
+          var _step$value = _step.value,
+            material = _step$value.material,
+            geometries = _step$value.geometries;
+          if (geometries.length === 0) continue;
+          var mergedGeometry = (0,three_examples_jsm_utils_BufferGeometryUtils_js__WEBPACK_IMPORTED_MODULE_10__.mergeGeometries)(geometries, true);
+          var mergedMesh = new three__WEBPACK_IMPORTED_MODULE_11__.Mesh(mergedGeometry, material);
+          var key = void 0;
+          if (Array.isArray(material)) {
+            key = material.map(function (m) {
+              return m.uuid;
+            }).join('-'); // create a key from all material UUIDs
+          } else {
+            key = material.uuid;
+          }
+          mergedMesh.name = "MergedMesh_".concat(key);
+          mergedMeshes.push(mergedMesh);
+          console.log('mergedMesh:', mergedMesh, 'for key:', key);
+          console.log("Merged mesh created for material: ".concat(material.name || key));
+        }
+      } catch (err) {
+        _iterator.e(err);
+      } finally {
+        _iterator.f();
+      }
+      console.log("Merged meshes:", mergedMeshes);
+      return mergedMeshes;
+    }
 
     /**
      * Loads the model based on a list of {@link InputFile} objects. This method is used
@@ -102500,6 +104368,7 @@ var EmbeddedViewer = /*#__PURE__*/function () {
       }
       this.model = null;
       var progressDiv = null;
+      console.log("Loading model from input files:", inputFiles);
       this.modelLoader.LoadModel(inputFiles, settings, {
         onLoadStart: function onLoadStart() {
           _this2.canvas.style.display = 'none';
@@ -102526,6 +104395,19 @@ var EmbeddedViewer = /*#__PURE__*/function () {
               child.name = selectedItem;
             }
           });
+
+          //let mergedMeshes = this.MergeSubMeshesByMaterial(threeObject);
+          //fconst mergedGeometry = mergeGeometries([mesh1.geometry, mesh2.geometry]);
+          //const mergedMesh = new THREE.Mesh(mergedGeometry, sharedMaterial);
+          //console.log("Merged meshes:", mergedMeshes);
+
+          // const group = new THREE.Group();
+          // group.name = 'OptimizedGroup';
+
+          // mergedMeshes.forEach(mesh => {
+          // group.add(mesh); // Each item is already a THREE.Mesh
+          // });
+
           _this2.canvas.style.display = 'inherit';
           // Set the main object and the minimum distance of the camera
           _this2.viewer.SetMainObject(threeObject);
@@ -103377,14 +105259,14 @@ var Navigation = /*#__PURE__*/function () {
       if (fingerCount === 1) {
         navigationType = NavigationType.Orbit;
       } else if (fingerCount === 2) {
-        // Disable panning
-        // navigationType = NavigationType.Pan;
+        navigationType = NavigationType.Zoom;
       }
       if (navigationType === NavigationType.Orbit) {
         var orbitRatio = 0.5;
         this.Orbit(moveDiff.x * orbitRatio, moveDiff.y * orbitRatio);
       } else if (navigationType === NavigationType.Zoom) {
         var zoomRatio = 0.005;
+        console.log("CALLED BY TOUCH");
         this.Zoom(distanceDiff * zoomRatio);
       }
       this.Update();
@@ -103769,6 +105651,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var gsap__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! gsap */ "./node_modules/gsap/index.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/* harmony import */ var three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! three/examples/jsm/geometries/TextGeometry.js */ "./node_modules/three/examples/jsm/geometries/TextGeometry.js");
+/* harmony import */ var three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! three/examples/jsm/loaders/FontLoader.js */ "./node_modules/three/examples/jsm/loaders/FontLoader.js");
 /* harmony import */ var three_examples_jsm_postprocessing_EffectComposer_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! three/examples/jsm/postprocessing/EffectComposer.js */ "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js");
 /* harmony import */ var three_examples_jsm_postprocessing_RenderPass_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! three/examples/jsm/postprocessing/RenderPass.js */ "./node_modules/three/examples/jsm/postprocessing/RenderPass.js");
 /* harmony import */ var three_examples_jsm_postprocessing_UnrealBloomPass_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! three/examples/jsm/postprocessing/UnrealBloomPass.js */ "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js");
@@ -104953,6 +106837,8 @@ var Viewer = /*#__PURE__*/function () {
       sprite.scale.set(scale * 2, scale, 1);
       sprite.position.copy(position);
       sprite.quaternion.copy(this.camera.quaternion);
+      sprite.renderOrder = 999;
+      sprite.frustumCulled = false;
       return sprite;
     }
   }, {
@@ -104987,40 +106873,35 @@ var Viewer = /*#__PURE__*/function () {
       // Add text sprite near cube
       var text = this.CreateTextSprite(label, midPoint, 0.5);
       this.scene.add(text);
-
-      // const loader = new FontLoader();
-      // loader.load(
-      //     'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
-      //     function (font) {
-      //         const textSize = objectHeight * textSizePercent;
-      //         const textGeometry = new TextGeometry(label, {
-      //             font: font,
-      //             size: textSize,
-      //             depth: 0.02,
-      //             curveSegments: 12,
-      //         });
-
-      //         const textMaterial = new THREE.MeshBasicMaterial({ color });
-      //         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-      //         const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
-      //         textMesh.position.copy(midPoint);
-      //         textMesh.userData.isAnnotation = true;
-      //         textMesh.userData.viewCam = true;
-      //         textMesh.name = 'textMesh';
-      //         const cotationCheckbox = document.getElementById('cotationCheckbox');
-      //         if (cotationCheckbox.checked) {
-      //             textMesh.visible = true;
-      //         } else {
-      //             textMesh.visible = false;
-      //         }
-      //         textMeshes.push(textMesh);
-      //         mainGroup.add(textMesh);
-      //     },
-      //     undefined,
-      //     function (error) {
-      //         console.error('Error loading font:', error);
-      //     }
-      // );
+      var loader = new three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__.FontLoader();
+      loader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+        var textSize = objectHeight * textSizePercent;
+        var textGeometry = new three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_18__.TextGeometry(label, {
+          font: font,
+          size: textSize,
+          depth: 0.02,
+          curveSegments: 12
+        });
+        var textMaterial = new three__WEBPACK_IMPORTED_MODULE_10__.MeshBasicMaterial({
+          color: color
+        });
+        var textMesh = new three__WEBPACK_IMPORTED_MODULE_10__.Mesh(textGeometry, textMaterial);
+        var midPoint = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3().lerpVectors(startPoint, endPoint, 0.5);
+        textMesh.position.copy(midPoint);
+        textMesh.userData.isAnnotation = true;
+        textMesh.userData.viewCam = true;
+        textMesh.name = 'textMesh';
+        var cotationCheckbox = document.getElementById('cotationCheckbox');
+        if (cotationCheckbox.checked) {
+          textMesh.visible = true;
+        } else {
+          textMesh.visible = false;
+        }
+        textMeshes.push(textMesh);
+        mainGroup.add(textMesh);
+      }, undefined, function (error) {
+        console.error('Error loading font:', error);
+      });
     }
   }, {
     key: "onMouseDown",
@@ -105689,7 +107570,7 @@ document.addEventListener('DOMContentLoaded', function () {
         while (1) switch (_context.prev = _context.next) {
           case 0:
             console.log('File input changed');
-            files = event.target.files;
+            files = Array.from(event.target.files); // Make it a proper array
             if (!(files.length > 0)) {
               _context.next = 5;
               break;
@@ -105714,9 +107595,12 @@ document.addEventListener('DOMContentLoaded', function () {
       return _regeneratorRuntime().wrap(function _callee3$(_context3) {
         while (1) switch (_context3.prev = _context3.next) {
           case 0:
-            // Assuming the files are model files, you can load them into the viewer
+            // You can inspect the file names/types here if needed
+            console.log("Uploading files:", files.map(function (f) {
+              return f.name;
+            }));
             viewer.LoadModelFromFileList(files, "testItem");
-          case 1:
+          case 2:
           case "end":
             return _context3.stop();
         }

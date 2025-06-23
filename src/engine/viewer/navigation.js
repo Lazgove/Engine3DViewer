@@ -423,8 +423,7 @@ export class Navigation {
         if (fingerCount === 1) {
             navigationType = NavigationType.Orbit;
         } else if (fingerCount === 2) {
-            // Disable panning
-            // navigationType = NavigationType.Pan;
+            navigationType = NavigationType.Zoom;
         }
 
         if (navigationType === NavigationType.Orbit) {
@@ -432,6 +431,7 @@ export class Navigation {
             this.Orbit(moveDiff.x * orbitRatio, moveDiff.y * orbitRatio);
         } else if (navigationType === NavigationType.Zoom) {
             let zoomRatio = 0.005;
+            console.log("CALLED BY TOUCH");
             this.Zoom(distanceDiff * zoomRatio);
         }
 

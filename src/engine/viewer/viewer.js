@@ -1269,39 +1269,39 @@ export class Viewer
         const text = this.CreateTextSprite(label, midPoint, 0.5);
         this.scene.add(text);
 
-        // const loader = new FontLoader();
-        // loader.load(
-        //     'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
-        //     function (font) {
-        //         const textSize = objectHeight * textSizePercent;
-        //         const textGeometry = new TextGeometry(label, {
-        //             font: font,
-        //             size: textSize,
-        //             depth: 0.02,
-        //             curveSegments: 12,
-        //         });
+        const loader = new FontLoader();
+        loader.load(
+            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
+            function (font) {
+                const textSize = objectHeight * textSizePercent;
+                const textGeometry = new TextGeometry(label, {
+                    font: font,
+                    size: textSize,
+                    depth: 0.02,
+                    curveSegments: 12,
+                });
 
-        //         const textMaterial = new THREE.MeshBasicMaterial({ color });
-        //         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-        //         const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
-        //         textMesh.position.copy(midPoint);
-        //         textMesh.userData.isAnnotation = true;
-        //         textMesh.userData.viewCam = true;
-        //         textMesh.name = 'textMesh';
-        //         const cotationCheckbox = document.getElementById('cotationCheckbox');
-        //         if (cotationCheckbox.checked) {
-        //             textMesh.visible = true;
-        //         } else {
-        //             textMesh.visible = false;
-        //         }
-        //         textMeshes.push(textMesh);
-        //         mainGroup.add(textMesh);
-        //     },
-        //     undefined,
-        //     function (error) {
-        //         console.error('Error loading font:', error);
-        //     }
-        // );
+                const textMaterial = new THREE.MeshBasicMaterial({ color });
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
+                textMesh.position.copy(midPoint);
+                textMesh.userData.isAnnotation = true;
+                textMesh.userData.viewCam = true;
+                textMesh.name = 'textMesh';
+                const cotationCheckbox = document.getElementById('cotationCheckbox');
+                if (cotationCheckbox.checked) {
+                    textMesh.visible = true;
+                } else {
+                    textMesh.visible = false;
+                }
+                textMeshes.push(textMesh);
+                mainGroup.add(textMesh);
+            },
+            undefined,
+            function (error) {
+                console.error('Error loading font:', error);
+            }
+        );
     }
 
     onMouseDown(event) {
