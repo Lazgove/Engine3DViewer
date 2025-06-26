@@ -216,8 +216,11 @@ export class Viewer
 
         this.animate = this.animate.bind(this);
         this.onMouseDown = this.onMouseDown.bind(this);
+        this.onTouchStart = this.onTouchStart.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
+        this.onTouchMove = this.onTouchMove.bind(this); 
         this.onMouseUp = this.onMouseUp.bind(this);
+        this.onTouchEnd = this.onTouchEnd.bind(this);
 
         this.controls = null;
         this.selectedObject = null;
@@ -1275,8 +1278,43 @@ export class Viewer
         const rect = this.renderer.domElement.getBoundingClientRect();
         this.navigation.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         this.navigation.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
         this.raycaster.setFromCamera(this.navigation.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(this.mainModel.GetMainObject().GetRootObject().children, true);
+        console.log("mouse down", event);
+        if (intersects.length > 0) {
+            this.selectedObject = intersects[0].object;
+            this.originalMaterial = this.selectedObject.material;
+    
+            this.selectedObject.material = new THREE.MeshStandardMaterial({
+                color: 0xffff00,
+                emissive: 0xffd700,
+            });
+    
+            // Set the drag plane perpendicular to the camera view and at the intersection point
+            const intersectionPoint = intersects[0].point;
+            const cameraDirection = new THREE.Vector3();
+            this.camera.getWorldDirection(cameraDirection);
+            this.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, intersectionPoint);
+    
+            if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                const parentInverseMatrix = new THREE.Matrix4().copy(this.scene.getObjectByName('mainGroup').matrixWorld).invert();
+                const localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
+                const localObjectPosition = this.selectedObject.position.clone();
+    
+                this.dragOffset.copy(localObjectPosition).sub(localIntersectionPoint);
+            }
+            this.navigation.SetNavigationMode(0);
+            //this.controls.enabled = false;
+        }
+    }
+    
+    onTouchStart(event) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+
+        this.navigation.touch.currPos.x = ((event.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1;
+        this.navigation.touch.currPos.y = -((event.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1;
+        this.raycaster.setFromCamera(this.navigation.touch.currPos, this.camera);
+
         const intersects = this.raycaster.intersectObjects(this.mainModel.GetMainObject().GetRootObject().children, true);
     
         if (intersects.length > 0) {
@@ -1305,12 +1343,13 @@ export class Viewer
             //this.controls.enabled = false;
         }
     }
-    
+
     onMouseMove(event) {
         const rect = this.renderer.domElement.getBoundingClientRect();
+
         this.navigation.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         this.navigation.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
+
         if (this.selectedObject) {
             this.raycaster.setFromCamera(this.navigation.mouse, this.camera);
     
@@ -1345,6 +1384,47 @@ export class Viewer
         }
     }
     
+    onTouchMove(event) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+
+        this.navigation.touch.currPos.x = ((event.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1;
+        this.navigation.touch.currPos.y = -((event.changedTouches[0].clientY - rect.top) / rect.height) * 2 + 1;
+
+        if (this.selectedObject) {
+            this.raycaster.setFromCamera(this.navigation.touch.currPos, this.camera);
+    
+            if (this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint)) {
+                const parentInverseMatrix = new THREE.Matrix4().copy(this.scene.getObjectByName('mainGroup').matrixWorld).invert();
+                const localIntersectionPoint = this.intersectionPoint.clone().applyMatrix4(parentInverseMatrix);
+    
+                const newPosition = localIntersectionPoint.add(this.dragOffset);
+    
+                const mainObject = this.mainModel.GetMainObject().GetRootObject();
+                const boundingBox = new THREE.Box3().setFromObject(mainObject);
+                const boxCenter = new THREE.Vector3();
+                boundingBox.getCenter(boxCenter);
+    
+                const boxSize = new THREE.Vector3();
+                boundingBox.getSize(boxSize);
+    
+                const maxDimension = Math.max(boxSize.x, boxSize.y, boxSize.z);
+                const scaledHalfSize = (maxDimension * 3) / 2;
+    
+                const movementLimits = {
+                    min: boxCenter.clone().subScalar(scaledHalfSize),
+                    max: boxCenter.clone().addScalar(scaledHalfSize),
+                };
+    
+                newPosition.x = THREE.MathUtils.clamp(newPosition.x, movementLimits.min.x, movementLimits.max.x);
+                newPosition.y = THREE.MathUtils.clamp(newPosition.y, movementLimits.min.y, movementLimits.max.y);
+                newPosition.z = THREE.MathUtils.clamp(newPosition.z, movementLimits.min.z, movementLimits.max.z);
+    
+                this.selectedObject.position.copy(newPosition);
+            }
+        }
+    }
+
+
     onMouseUp(event) {
         if (this.selectedObject) {
             if (this.originalMaterial) {
@@ -1352,7 +1432,18 @@ export class Viewer
             }
             this.navigation.SetNavigationMode(1);
         }
-    66
+
+        this.selectedObject = null;
+    }
+
+    onTouchEnd(event) {
+        if (this.selectedObject) {
+            if (this.originalMaterial) {
+                this.selectedObject.material = this.originalMaterial;
+            }
+            this.navigation.SetNavigationMode(1);
+        }
+
         this.selectedObject = null;
     }
     
@@ -1361,15 +1452,27 @@ export class Viewer
         this.onMouseMove = this.onMouseMove.bind(this);
         this.onMouseUp = this.onMouseUp.bind(this);
     
+        this.onTouchStart = this.onTouchStart.bind(this);
+        this.onTouchMove = this.onTouchMove.bind(this);
+        this.onTouchEnd = this.onTouchEnd.bind(this);
+
         this.renderer.domElement.addEventListener('mousedown', this.onMouseDown);
         this.renderer.domElement.addEventListener('mousemove', this.onMouseMove);
         this.renderer.domElement.addEventListener('mouseup', this.onMouseUp);
+
+        this.renderer.domElement.addEventListener('touchstart', this.onTouchStart);
+        this.renderer.domElement.addEventListener('touchmove', this.onTouchMove);
+        this.renderer.domElement.addEventListener('touchend', this.onTouchEnd);
     }
     
     removeInteractionListeners() {
         this.renderer.domElement.removeEventListener('mousedown', this.onMouseDown);
         this.renderer.domElement.removeEventListener('mousemove', this.onMouseMove);
         this.renderer.domElement.removeEventListener('mouseup', this.onMouseUp);
+
+        this.renderer.domElement.removeEventListener('touchstart', this.onTouchStart);
+        this.renderer.domElement.removeEventListener('touchmove', this.onTouchMove);
+        this.renderer.domElement.removeEventListener('touchend', this.onTouchEnd);
     };
 
     UpdateCameraAndControls() {
