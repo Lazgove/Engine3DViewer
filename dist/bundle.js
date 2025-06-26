@@ -65213,73 +65213,6 @@ function calcVolumePoint( p, q, r, U, V, W, P, u, v, w, target ) {
 
 /***/ }),
 
-/***/ "./node_modules/three/examples/jsm/geometries/TextGeometry.js":
-/*!********************************************************************!*\
-  !*** ./node_modules/three/examples/jsm/geometries/TextGeometry.js ***!
-  \********************************************************************/
-/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   TextGeometry: () => (/* binding */ TextGeometry)
-/* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
-/**
- * Text = 3D Text
- *
- * parameters = {
- *  font: <THREE.Font>, // font
- *
- *  size: <float>, // size of the text
- *  depth: <float>, // thickness to extrude text
- *  curveSegments: <int>, // number of points on the curves
- *
- *  bevelEnabled: <bool>, // turn on bevel
- *  bevelThickness: <float>, // how deep into text bevel goes
- *  bevelSize: <float>, // how far from text outline (including bevelOffset) is bevel
- *  bevelOffset: <float> // how far from text outline does bevel start
- * }
- */
-
-
-
-class TextGeometry extends three__WEBPACK_IMPORTED_MODULE_0__.ExtrudeGeometry {
-
-	constructor( text, parameters = {} ) {
-
-		const font = parameters.font;
-
-		if ( font === undefined ) {
-
-			super(); // generate default extrude geometry
-
-		} else {
-
-			const shapes = font.generateShapes( text, parameters.size );
-
-			// defaults
-
-			if ( parameters.depth === undefined ) parameters.depth = 50;
-			if ( parameters.bevelThickness === undefined ) parameters.bevelThickness = 10;
-			if ( parameters.bevelSize === undefined ) parameters.bevelSize = 8;
-			if ( parameters.bevelEnabled === undefined ) parameters.bevelEnabled = false;
-
-			super( shapes, parameters );
-
-		}
-
-		this.type = 'TextGeometry';
-
-	}
-
-}
-
-
-
-
-
-/***/ }),
-
 /***/ "./node_modules/three/examples/jsm/libs/chevrotain.module.min.js":
 /*!***********************************************************************!*\
   !*** ./node_modules/three/examples/jsm/libs/chevrotain.module.min.js ***!
@@ -78652,201 +78585,6 @@ function slice( a, b, from, to ) {
 
 }
 
-
-
-
-
-/***/ }),
-
-/***/ "./node_modules/three/examples/jsm/loaders/FontLoader.js":
-/*!***************************************************************!*\
-  !*** ./node_modules/three/examples/jsm/loaders/FontLoader.js ***!
-  \***************************************************************/
-/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   Font: () => (/* binding */ Font),
-/* harmony export */   FontLoader: () => (/* binding */ FontLoader)
-/* harmony export */ });
-/* harmony import */ var three__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
-
-
-class FontLoader extends three__WEBPACK_IMPORTED_MODULE_0__.Loader {
-
-	constructor( manager ) {
-
-		super( manager );
-
-	}
-
-	load( url, onLoad, onProgress, onError ) {
-
-		const scope = this;
-
-		const loader = new three__WEBPACK_IMPORTED_MODULE_0__.FileLoader( this.manager );
-		loader.setPath( this.path );
-		loader.setRequestHeader( this.requestHeader );
-		loader.setWithCredentials( this.withCredentials );
-		loader.load( url, function ( text ) {
-
-			const font = scope.parse( JSON.parse( text ) );
-
-			if ( onLoad ) onLoad( font );
-
-		}, onProgress, onError );
-
-	}
-
-	parse( json ) {
-
-		return new Font( json );
-
-	}
-
-}
-
-//
-
-class Font {
-
-	constructor( data ) {
-
-		this.isFont = true;
-
-		this.type = 'Font';
-
-		this.data = data;
-
-	}
-
-	generateShapes( text, size = 100 ) {
-
-		const shapes = [];
-		const paths = createPaths( text, size, this.data );
-
-		for ( let p = 0, pl = paths.length; p < pl; p ++ ) {
-
-			shapes.push( ...paths[ p ].toShapes() );
-
-		}
-
-		return shapes;
-
-	}
-
-}
-
-function createPaths( text, size, data ) {
-
-	const chars = Array.from( text );
-	const scale = size / data.resolution;
-	const line_height = ( data.boundingBox.yMax - data.boundingBox.yMin + data.underlineThickness ) * scale;
-
-	const paths = [];
-
-	let offsetX = 0, offsetY = 0;
-
-	for ( let i = 0; i < chars.length; i ++ ) {
-
-		const char = chars[ i ];
-
-		if ( char === '\n' ) {
-
-			offsetX = 0;
-			offsetY -= line_height;
-
-		} else {
-
-			const ret = createPath( char, scale, offsetX, offsetY, data );
-			offsetX += ret.offsetX;
-			paths.push( ret.path );
-
-		}
-
-	}
-
-	return paths;
-
-}
-
-function createPath( char, scale, offsetX, offsetY, data ) {
-
-	const glyph = data.glyphs[ char ] || data.glyphs[ '?' ];
-
-	if ( ! glyph ) {
-
-		console.error( 'THREE.Font: character "' + char + '" does not exists in font family ' + data.familyName + '.' );
-
-		return;
-
-	}
-
-	const path = new three__WEBPACK_IMPORTED_MODULE_0__.ShapePath();
-
-	let x, y, cpx, cpy, cpx1, cpy1, cpx2, cpy2;
-
-	if ( glyph.o ) {
-
-		const outline = glyph._cachedOutline || ( glyph._cachedOutline = glyph.o.split( ' ' ) );
-
-		for ( let i = 0, l = outline.length; i < l; ) {
-
-			const action = outline[ i ++ ];
-
-			switch ( action ) {
-
-				case 'm': // moveTo
-
-					x = outline[ i ++ ] * scale + offsetX;
-					y = outline[ i ++ ] * scale + offsetY;
-
-					path.moveTo( x, y );
-
-					break;
-
-				case 'l': // lineTo
-
-					x = outline[ i ++ ] * scale + offsetX;
-					y = outline[ i ++ ] * scale + offsetY;
-
-					path.lineTo( x, y );
-
-					break;
-
-				case 'q': // quadraticCurveTo
-
-					cpx = outline[ i ++ ] * scale + offsetX;
-					cpy = outline[ i ++ ] * scale + offsetY;
-					cpx1 = outline[ i ++ ] * scale + offsetX;
-					cpy1 = outline[ i ++ ] * scale + offsetY;
-
-					path.quadraticCurveTo( cpx1, cpy1, cpx, cpy );
-
-					break;
-
-				case 'b': // bezierCurveTo
-
-					cpx = outline[ i ++ ] * scale + offsetX;
-					cpy = outline[ i ++ ] * scale + offsetY;
-					cpx1 = outline[ i ++ ] * scale + offsetX;
-					cpy1 = outline[ i ++ ] * scale + offsetY;
-					cpx2 = outline[ i ++ ] * scale + offsetX;
-					cpy2 = outline[ i ++ ] * scale + offsetY;
-
-					path.bezierCurveTo( cpx1, cpy1, cpx2, cpy2, cpx, cpy );
-
-					break;
-
-			}
-
-		}
-
-	}
-
-	return { offsetX: glyph.ha * scale, path: path };
-
-}
 
 
 
@@ -104395,19 +104133,6 @@ var EmbeddedViewer = /*#__PURE__*/function () {
               child.name = selectedItem;
             }
           });
-
-          //let mergedMeshes = this.MergeSubMeshesByMaterial(threeObject);
-          //fconst mergedGeometry = mergeGeometries([mesh1.geometry, mesh2.geometry]);
-          //const mergedMesh = new THREE.Mesh(mergedGeometry, sharedMaterial);
-          //console.log("Merged meshes:", mergedMeshes);
-
-          // const group = new THREE.Group();
-          // group.name = 'OptimizedGroup';
-
-          // mergedMeshes.forEach(mesh => {
-          // group.add(mesh); // Each item is already a THREE.Mesh
-          // });
-
           _this2.canvas.style.display = 'inherit';
           // Set the main object and the minimum distance of the camera
           _this2.viewer.SetMainObject(threeObject);
@@ -105651,8 +105376,6 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var gsap__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! gsap */ "./node_modules/gsap/index.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.core.js");
 /* harmony import */ var three__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-/* harmony import */ var three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! three/examples/jsm/geometries/TextGeometry.js */ "./node_modules/three/examples/jsm/geometries/TextGeometry.js");
-/* harmony import */ var three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! three/examples/jsm/loaders/FontLoader.js */ "./node_modules/three/examples/jsm/loaders/FontLoader.js");
 /* harmony import */ var three_examples_jsm_postprocessing_EffectComposer_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! three/examples/jsm/postprocessing/EffectComposer.js */ "./node_modules/three/examples/jsm/postprocessing/EffectComposer.js");
 /* harmony import */ var three_examples_jsm_postprocessing_RenderPass_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! three/examples/jsm/postprocessing/RenderPass.js */ "./node_modules/three/examples/jsm/postprocessing/RenderPass.js");
 /* harmony import */ var three_examples_jsm_postprocessing_UnrealBloomPass_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! three/examples/jsm/postprocessing/UnrealBloomPass.js */ "./node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js");
@@ -106806,41 +106529,6 @@ var Viewer = /*#__PURE__*/function () {
       this.CreateDoubleSidedArrow(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z), new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.max.y, boundingBox.min.z), "".concat(size.y.toFixed(2), " cm"), objectHeight);
       this.CreateDoubleSidedArrow(new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.min.z), new three__WEBPACK_IMPORTED_MODULE_10__.Vector3(boundingBox.max.x, boundingBox.min.y, boundingBox.max.z), "".concat(size.z.toFixed(2), " cm"), objectHeight);
     }
-
-    // Create text sprite
-  }, {
-    key: "CreateTextSprite",
-    value: function CreateTextSprite(label, position) {
-      var scale = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
-      var canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 256;
-      var ctx = canvas.getContext('2d');
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = "64px Arial";
-
-      // Shadow text
-      ctx.fillStyle = "black";
-      ctx.fillText(label, canvas.width / 2 + 3, canvas.height / 2 + 3);
-
-      // Main text
-      ctx.fillStyle = "red";
-      ctx.fillText(label, canvas.width / 2, canvas.height / 2);
-      var texture = new three__WEBPACK_IMPORTED_MODULE_10__.CanvasTexture(canvas);
-      texture.minFilter = three__WEBPACK_IMPORTED_MODULE_10__.LinearFilter;
-      var material = new three__WEBPACK_IMPORTED_MODULE_10__.SpriteMaterial({
-        map: texture,
-        transparent: true
-      });
-      var sprite = new three__WEBPACK_IMPORTED_MODULE_10__.Sprite(material);
-      sprite.scale.set(scale * 2, scale, 1);
-      sprite.position.copy(position);
-      sprite.quaternion.copy(this.camera.quaternion);
-      sprite.renderOrder = 999;
-      sprite.frustumCulled = false;
-      return sprite;
-    }
   }, {
     key: "CreateDoubleSidedArrow",
     value: function CreateDoubleSidedArrow(startPoint, endPoint, label, objectHeight) {
@@ -106851,7 +106539,6 @@ var Viewer = /*#__PURE__*/function () {
       var reverseDirection = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3().subVectors(startPoint, endPoint).normalize();
       var arrowLength = startPoint.distanceTo(endPoint);
       var arrowHelper1 = new three__WEBPACK_IMPORTED_MODULE_10__.ArrowHelper(direction, startPoint, arrowLength, color);
-      var textMeshes = [];
       arrowHelper1.userData.isAnnotation = true;
       arrowHelper1.name = 'arrowHelper1';
       if (cotationCheckbox.checked) {
@@ -106871,37 +106558,41 @@ var Viewer = /*#__PURE__*/function () {
       mainGroup.add(arrowHelper2);
       var midPoint = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3().lerpVectors(startPoint, endPoint, 0.5);
       // Add text sprite near cube
-      var text = this.CreateTextSprite(label, midPoint, 0.5);
-      this.scene.add(text);
-      var loader = new three_examples_jsm_loaders_FontLoader_js__WEBPACK_IMPORTED_MODULE_17__.FontLoader();
-      loader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', function (font) {
-        var textSize = objectHeight * textSizePercent;
-        var textGeometry = new three_examples_jsm_geometries_TextGeometry_js__WEBPACK_IMPORTED_MODULE_18__.TextGeometry(label, {
-          font: font,
-          size: textSize,
-          depth: 0.02,
-          curveSegments: 12
-        });
-        var textMaterial = new three__WEBPACK_IMPORTED_MODULE_10__.MeshBasicMaterial({
-          color: color
-        });
-        var textMesh = new three__WEBPACK_IMPORTED_MODULE_10__.Mesh(textGeometry, textMaterial);
-        var midPoint = new three__WEBPACK_IMPORTED_MODULE_10__.Vector3().lerpVectors(startPoint, endPoint, 0.5);
-        textMesh.position.copy(midPoint);
-        textMesh.userData.isAnnotation = true;
-        textMesh.userData.viewCam = true;
-        textMesh.name = 'textMesh';
-        var cotationCheckbox = document.getElementById('cotationCheckbox');
-        if (cotationCheckbox.checked) {
-          textMesh.visible = true;
-        } else {
-          textMesh.visible = false;
-        }
-        textMeshes.push(textMesh);
-        mainGroup.add(textMesh);
-      }, undefined, function (error) {
-        console.error('Error loading font:', error);
+      this.Create3DLabel(label, midPoint, objectHeight);
+    }
+  }, {
+    key: "Create3DLabel",
+    value: function Create3DLabel(label, position, objectHeight) {
+      var canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 128;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'red';
+      ctx.font = 'bold 48px Roboto';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, canvas.width / 2, canvas.height / 2);
+
+      // Add shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 0.1;
+      ctx.shadowOffsetX = 4;
+      ctx.shadowOffsetY = 4;
+      var texture = new three__WEBPACK_IMPORTED_MODULE_10__.CanvasTexture(canvas);
+      texture.minFilter = three__WEBPACK_IMPORTED_MODULE_10__.LinearFilter;
+      var material = new three__WEBPACK_IMPORTED_MODULE_10__.SpriteMaterial({
+        map: texture,
+        depthTest: false // This makes it always appear on top
       });
+      var sprite = new three__WEBPACK_IMPORTED_MODULE_10__.Sprite(material);
+      sprite.position.copy(position);
+      sprite.scale.set(objectHeight * 0.3, objectHeight * 0.1, objectHeight * 0.1);
+      sprite.renderOrder = 999; // High value to render last
+      sprite.frustumCulled = false;
+      sprite.name = "label-".concat(label); // Assign a name to the sprite
+      sprite.userData.isAnnotation = true;
+      sprite.visible = false;
+      this.scene.add(sprite);
     }
   }, {
     key: "onMouseDown",

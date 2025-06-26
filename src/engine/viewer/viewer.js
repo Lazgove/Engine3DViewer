@@ -1201,49 +1201,14 @@ export class Viewer
         );
     }
 
-    // Create text sprite
-    CreateTextSprite(label, position, scale = 1) {
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 256;
-        const ctx = canvas.getContext('2d');
-
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "64px Arial";
-    
-        // Shadow text
-        ctx.fillStyle = "black";
-        ctx.fillText(label, canvas.width / 2 + 3, canvas.height / 2 + 3);
-    
-        // Main text
-        ctx.fillStyle = "red";
-        ctx.fillText(label, canvas.width / 2, canvas.height / 2);
-    
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.minFilter = THREE.LinearFilter;
-        const material = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true,
-        });
-        const sprite = new THREE.Sprite(material);
-        sprite.scale.set(scale * 2, scale, 1);
-        sprite.position.copy(position);
-        sprite.quaternion.copy(this.camera.quaternion);
-        sprite.renderOrder = 999;
-        sprite.frustumCulled = false;
-
-        return sprite;
-    }
-
     CreateDoubleSidedArrow(startPoint, endPoint, label, objectHeight, color = 0x37b6ff, textSizePercent = 0.07) {
         const mainGroup = this.scene.getObjectByName('mainGroup');
+
         const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
         const reverseDirection = new THREE.Vector3().subVectors(startPoint, endPoint).normalize();
+        
         const arrowLength = startPoint.distanceTo(endPoint);
         const arrowHelper1 = new THREE.ArrowHelper(direction, startPoint, arrowLength, color);
-        const textMeshes = [];
 
         arrowHelper1.userData.isAnnotation = true;
         arrowHelper1.name = 'arrowHelper1';
@@ -1266,42 +1231,44 @@ export class Viewer
 
         const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
         // Add text sprite near cube
-        const text = this.CreateTextSprite(label, midPoint, 0.5);
-        this.scene.add(text);
+        this.Create3DLabel(label, midPoint, objectHeight);
+    }
 
-        const loader = new FontLoader();
-        loader.load(
-            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json',
-            function (font) {
-                const textSize = objectHeight * textSizePercent;
-                const textGeometry = new TextGeometry(label, {
-                    font: font,
-                    size: textSize,
-                    depth: 0.02,
-                    curveSegments: 12,
-                });
+    Create3DLabel(label, position, objectHeight) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
 
-                const textMaterial = new THREE.MeshBasicMaterial({ color });
-                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                const midPoint = new THREE.Vector3().lerpVectors(startPoint, endPoint, 0.5);
-                textMesh.position.copy(midPoint);
-                textMesh.userData.isAnnotation = true;
-                textMesh.userData.viewCam = true;
-                textMesh.name = 'textMesh';
-                const cotationCheckbox = document.getElementById('cotationCheckbox');
-                if (cotationCheckbox.checked) {
-                    textMesh.visible = true;
-                } else {
-                    textMesh.visible = false;
-                }
-                textMeshes.push(textMesh);
-                mainGroup.add(textMesh);
-            },
-            undefined,
-            function (error) {
-                console.error('Error loading font:', error);
-            }
-        );
+        ctx.fillStyle = 'red';
+        ctx.font = 'bold 48px Roboto';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, canvas.width / 2, canvas.height / 2);
+
+        // Add shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 0.1;
+        ctx.shadowOffsetX = 4;
+        ctx.shadowOffsetY = 4;
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            depthTest: false, // This makes it always appear on top
+        });
+
+        const sprite = new THREE.Sprite(material);
+        sprite.position.copy(position);
+        sprite.scale.set(objectHeight*0.3, objectHeight*0.1, objectHeight*0.1);
+        sprite.renderOrder = 999;  // High value to render last
+        sprite.frustumCulled = false;
+        sprite.name = `label-${label}`; // Assign a name to the sprite
+        sprite.userData.isAnnotation = true;
+        sprite.visible = false;
+        this.scene.add(sprite);
     }
 
     onMouseDown(event) {
